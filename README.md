@@ -22,7 +22,6 @@ Input to B-SCITE consists of single-cell matrix, which is ternary matrix D of di
 ---------------------------------------------------
 
 ### ddClone 
-----------------------------------
 
 ddClone was run according to specifications from (cite ddClone paper). True simulated purity value was given as the input and single-cell data input was obtained after preprocessing simulated single cell matrix D by using Single-Cell Genotyper (cite Single-Cell genotyper paper) that provides genotype matrix that is desired input for ddClone. Tool was run for 300 iterations. 
 
