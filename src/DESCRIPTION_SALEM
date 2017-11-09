@@ -1,0 +1,12 @@
+Tree is represented as as parent vector of length n where parent[i] denotes the value of parent of node i (zero indexing). Root node is represented as n (remember: zero indexing is used).
+Root node's parent is not member of this vector (which is reasonable as this node has no parent). Furthermore, when talking about tree size, here we typically talk about the number (n+1). Parent vector and ancestry matrices are of dimensions n and n x n, respectively. 
+In ancestry matrix, it is assumed that each node is ancestor of itself i.e. ancestry[i][i]=1.
+
+ancMatrixToParVector  ----- 
+try to improve this function (idea: for each node find number of its ancestors -- that is its distance to the root, and then go through nodes having distance 0, then those having distance 1 etc. For node having distance k we consider its ascendants and look for the one having distance equal to k-1)
+
+In file findBestTree.cpp what is the usage of vector newMoveProbs defined while reading arguments?
+Same file -- what is the usage of function printGeneFrequencies()
+Same file -- what is the usage of function getMinDist()
+
+IMPORTANT !!! Input file should be of dimension n x m where n is num_mutations and m is num_samples. However, dataMatrix used throughout the code is of dimensions m x n. It is transposed inside getDataMatrix function in the findBestTrees.cpp
