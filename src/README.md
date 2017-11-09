@@ -7,16 +7,15 @@
 --------------
 
 
-**B=SCITE** is a software package to compute trees of tumor evolution by integrative use of single-cell and bulk sequencing data.
+**B-SCITE** is a software package to compute trees of tumor evolution by integrative use of single-cell and bulk sequencing data. Full details about the use of the software will be added in the following days.
 
 
 
 ## Availability
 ---------------
 
-**SCITE** is freely available under a GPL3 license at https://gitlab.com/jahnka/SCITE
 
-##    How to run **SCITE**
+##    How to run **B-SCITE**
 --------------------------
 
 
@@ -25,9 +24,9 @@
 
 To compile the C/C++ program, open a terminal and go to the folder containing the source files, and type
 
-	clang++ *.cpp -o scite
+	clang++ *.cpp -o bscite
 
-This writes a file named `scite`. With older compiler versions you may need to use the option `-std=c++11`.
+This writes a file named `bscite`. With older compiler versions you may need to use the option `-std=c++11`.
 
 Assuming the sample data file dataHou18.csv is located in the same folder, `scite` can then be executed as follows
 
