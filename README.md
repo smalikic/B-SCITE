@@ -35,4 +35,4 @@ The input to SCITE is single-cell matrix used also as the input for B-SCITE. 3 r
 
 ### B-SCITE
 
-B-SCITE was also run for 3 loops and 200 000 iterations using the input data specified above.
+B-SCITE was also run for 3 repetitions, each with 200 000 iterations, using the input data as specified above.
