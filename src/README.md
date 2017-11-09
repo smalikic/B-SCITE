@@ -1,4 +1,4 @@
-# SCITE
+# B-SCITE
 ========
 
 
@@ -7,16 +7,9 @@
 --------------
 
 
-**SCITE** is a software package to compute mutation histories of somatic cells.
-Given noisy mutation profiles of single cells, **SCITE** performs a stochastic
-search to find the Maximum Likelihood (ML) or Maximum aposterori (MAP) tree and/or to sample from the posterior
-probability distribution. Tree reconstruction can be combined with an estimation
-of the error rates in the mutation profiles.
+**B=SCITE** is a software package to compute trees of tumor evolution by integrative use of single-cell and bulk sequencing data.
 
-**SCITE** is particularly designed for reconstructing mutation histories of
-tumours based on mutation profiles obtained from single-cell exome sequencing experiments, but is in 
-principle applicable to any type of (noisy) mutation profiles for which the
-infinite sites assumption can be made.
+
 
 ## Availability
 ---------------
