@@ -32,4 +32,4 @@ The input to SCITE is single-cell matrix used also as the input for B-SCITE. 3 r
 
 ## Running B-SCITE
 
-B-SCITE was also run for 3 loops and 200 000 iterations. EpGap parameter in solving Quadratic Program was set to 0.002 ensuring that solution found for the optimization part related to bulk-data
+B-SCITE was also run for 3 loops and 200 000 iterations using the input data specified above.
