@@ -26,7 +26,7 @@ Coming soon.
 
 Coming soon.
 
-#### Clustering mutations along linear chains between adjacent branching points and compression of mutation trees into clonal trees
+#### Compression of mutation trees into clonal trees
 
 Coming soon.
 
