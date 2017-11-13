@@ -16,19 +16,25 @@ In makefile, located inside folder src, Variable CC encoding path to C++ compile
 ## Input data
 -------------
 
-Input to B-SCITE consists of single-cell matrix, which is ternary matrix D of dimension nxm, where n denotes number of mutations and m denotes number of single cells obtained in sequencing experiment, and bulk sequencing derived matrix containing details about read counts for each of n mutations. Entries of single cell matrix are 0,1 and 3, coding respectively for absence, presence or missing value for mutation calls. We assume that each mutation 
+Input to B-SCITE consists of single-cell matrix, which is ternary matrix D of dimension nxm, where n denotes number of mutations and m denotes number of single cells obtained in sequencing experiment, and bulk sequencing derived matrix containing details about read counts for each of n mutations. Entries of single cell matrix are 0,1 and 3, coding respectively for absence, presence or missing value for mutation calls. Folder testExample contains an example input of bulk file (bulkFile-n_50.txt) and SC matrix (SCFile-n_50-m_100.txt). i-th row of SC file and (i+1)-th row of bulk file must correspond to the same mutation. 
 
 ## Running B-SCITE
 
-Coming soon.
+Simple Python script run_B-SCITE.py for running B-SCITE is provided inside folder testExample. Description of the parameters is also provided inside this file. In order to run B-SCITE it suffices to adjust related parameters in run_B-SCITE.py and run command "python run_B-SCITE.py".
 
 ## Interpreting Output
 
-Coming soon.
+Assuming that in the previous step, when running run_B-SCITE.py, we set prefix of B-SCITE output filenames to "./example", B-SCITE reports three output files (in this case stored inside folder testExample) with the following names and meaning:
+#### (i) example.matrices file 
+  This file stores n x n matrix A encoding ordering relations between two mutations in the best-scoring tree T reported by B-SCITE. i-th row of A corresponds to i-th mutation from the input data. Analogous applies to i-th column. In other words, A[i,j]=1 if and only if i = j or mutation i is placed as an ancestor of mutation j in T. Note that A is equivalent to the matrix obtained from ancestry matrix of T by removing row and column corresponding to the root node.
+#### (ii) example.gv
+  Best-scoring tree represented in Graphviz format. i-th mutation from the input data is labelled as i and root node is labelled as (n+1).
+#### (iii) example.newick
+  Best-scoring tree represented in Newick format. 
 
-#### Compression of mutation trees into clonal trees
+### Compression of mutation trees into clonal trees
 
-Coming soon.
+Clustering is performed along the chains formed by nodes x that lie between nodes A and B such that each of A and B is different and is either root node or has at least two descendants (i.e. is node where branching occurs). Also, we assume that between A and B there is no other node C on this path having more than one descendants. Code for performing clustering is available in the folder VAFclusterEMpackage including example.input. More details about running this script will be provided in the following days.
 
 
 ## Details about running tools in benchmarking step
