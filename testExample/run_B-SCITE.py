@@ -2,8 +2,7 @@ import sys
 import os
 
 APP_PATH  =  "./../src/bscite.exe" # path to B-SCITE executable
-OUTPUT_FOLDER = "./example"
-SUMMARY_FILE_FOLDER = "./"
+OUTPUT_FOLDER = "./example" # this is the prefix used for the three output files (.matrices, .gv and .newick) given as the output of B-SCITE
 
 SCFile   = "./SCFile-n_50-m_100.txt" # path input SC File
 bulkFile = "./bulkFile-n_50.txt"     # path input bulk file
@@ -25,5 +24,4 @@ run_command += "-ad " + str(fn) + " "
 run_command += "-r "  + str(r)  + " "
 run_command += "-l "  + str(l)  + " "
 run_command += "-o "  + OUTPUT_FOLDER + " "
-#run_command += "-summaryFolder " + SUMMARY_FILE_FOLDER.rstrip("/")
 os.system(run_command)
