@@ -249,14 +249,10 @@ double scoreTreeFastWithDoublets(int*parent, int n, int m, double** logScores, i
 
 std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* errorRates, int noOfReps, int noOfLoops, double gamma, vector<double> moveProbs, int n, int m, int** dataMatrix, char scoreType, int* trueParentVec, int step, bool sample, double chi, double priorSd_beta, double priorSd_alpha, bool useTreeList, char treeType, double doubletProb, int doubleMut, Mutation* bulkMutations, double w, string outFilenamePrefix, double* optimal_x, double* optimal_y, int* numCellsMutPresent, double bestIndependentSCScore){
 
-
-	cout << "numOfReps\t"  << noOfReps  << endl;
-	cout << "numOfLoops\t" << noOfLoops << endl;
-	cout << "bestIndependentSCScore\t" << bestIndependentSCScore << endl;
-	double bulkVariance = getBulkVariance(bulkMutations, n);
+	cout << endl << " ------ Starting MCMC with " << noOfReps << " repeats and " << noOfLoops << " loops ------" << endl;
 	ofstream SCORES_SummaryFile;
-	SCORES_SummaryFile.open((outFilenamePrefix + ".scores").c_str(), ios::out);
-	SCORES_SummaryFile << "Rep\tIt\tScoreType\tScoreValue\tSCContribution\tbulkContribution\trawSCScore\trawBulkScore\tw" << endl;
+//	SCORES_SummaryFile.open((outFilenamePrefix + ".scores").c_str(), ios::out);
+//	SCORES_SummaryFile << "Rep\tIt\tScoreType\tScoreValue\tSCContribution\tbulkContribution\trawSCScore\trawBulkScore\tw" << endl;
 
 	double burnInPhase = 0.25;                   // first quarter of steps are burn in phase
 	unsigned int optStatesAfterBurnIn = 0;
@@ -293,9 +289,7 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 
 
 	double SCScoreScalingCoeff   = getSCScoreScalingCoeff(dataMatrix, m, n, bestAlpha, bestBeta);
-	cout << "SCScoreScalingCoeff " << SCScoreScalingCoeff << endl;
 	double bulkScoreScalingCoeff = getBulkScoreScalingCoeff(bulkMutations, n);
-	cout << "bulkScoreScalingCeoff " << bulkScoreScalingCoeff << endl;
 	CombinedScoresStruct optimalBulkScore     = CombinedScoresStruct(n, m, dataMatrix, bulkMutations, 0.0, bestAlpha, bestBeta, bestIndependentSCScore);
 	CombinedScoresStruct optimalSCScore       = CombinedScoresStruct(n, m, dataMatrix, bulkMutations, 1.0, bestAlpha, bestBeta, bestIndependentSCScore);
 	CombinedScoresStruct optimalCombinedScore = CombinedScoresStruct(n, m, dataMatrix, bulkMutations, w, bestAlpha, bestBeta, bestIndependentSCScore);
@@ -303,7 +297,7 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 	clock_t lastTimeStamp = clock();
 	for(int r=0; r<noOfReps; r++){   // repeat the MCMC, start over with random tree each time, only best score and list of best trees is kept between repetitions
 		double topologySearch_w = 1.0; // w value used when deciding about move from current to next tree
-		cout << endl << "REPETITION NUMBER: " << r << endl;
+		cout << endl << "REPEAT NUMBER: " << r << endl;
 
 		int*   currTreeParentVec;
 		if(treeType=='m'){
@@ -366,14 +360,11 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 			int reportWhenDivisibleBy = 1000;
 			//int reportWhenDivisibleBy = noOfLoops/10;
 			if(it % reportWhenDivisibleBy == 0){
-        			//cout.precision(17); Katharina used 17, I changed to 5 Kathaina also used r+1 when printing repetition number
 				cout.precision(5);
-        			cout << "At mcmc repetition " << r << "/" << noOfReps << ", step " << it << ": best tree score " << bestTreeLogScore;
-        			cout << " and best beta " << bestBeta << " and best alpha " << bestAlpha << " and best overall score " << bestScore;
-        			cout << " and best rel. doublet rate " <<  bestRelDoubletRate << " and best doublet rate " << bestDoubletRate << " \n";
+				cout << "At MCMC (repeat,iteration) = (" << r << "," << it << ")\t and best score is " << optimalCombinedScore.getScore() << endl;
 				clock_t currentTimeStamp = clock();
-				cout << "CLOCKS_PER SEC\t" << CLOCKS_PER_SEC << endl;
-				cout << "Total time (in seconds) between latest reported (r,it) pair\t" << (double(currentTimeStamp-lastTimeStamp))/CLOCKS_PER_SEC << endl << endl; 
+			//	//cout << "CLOCKS_PER SEC\t" << CLOCKS_PER_SEC << endl;
+			//	cout << "Total time (in seconds) between latest reported (r,it) pair\t" << (double(currentTimeStamp-lastTimeStamp))/CLOCKS_PER_SEC << endl << endl; 
 				lastTimeStamp = currentTimeStamp;
     			}
 
@@ -564,10 +555,10 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 	cout.precision(17);
 	cout << endl << endl;
 	
-	cout << "best log score for tree:\t" << bestTreeLogScore <<  "\n";
+	cout << "Best score found:\t" << optimalCombinedScore.getScore() <<  "\n";
 	cout << "#optimal steps after burn-in:\t" << optStatesAfterBurnIn << "\n";
 	cout << "total #steps after burn-in:\t" << noStepsAfterBurnin << "\n";
-	cout << "%optimal steps after burn-in:\t" << (1.0*optStatesAfterBurnIn)/noStepsAfterBurnin << "\n";
+	cout << "#optimal steps after burn-in:\t" << (1.0*optStatesAfterBurnIn)/noStepsAfterBurnin << "\n";
 	if(moveProbs[0]!=0.0){
 		cout << "best value for beta:\t" << bestBeta << "\n";
 		cout << "best value for alpha:\t" << bestAlpha << "\n";
@@ -577,9 +568,9 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 	}
 
 	optimalCombinedScore.printSummaryOfScores();
-	writeOptimalVAFToFile(n, bulkMutations, optimal_x, optimal_y, outFilenamePrefix);
+	//writeOptimalVAFToFile(n, bulkMutations, optimal_x, optimal_y, outFilenamePrefix);
 	writeOptimalMatricesToFile(n, optimalCombinedScore, optimalSCScore, optimalBulkScore, outFilenamePrefix);
-	SCORES_SummaryFile.close();
+//	SCORES_SummaryFile.close();
 	
 
 	return sampleOutput.str();

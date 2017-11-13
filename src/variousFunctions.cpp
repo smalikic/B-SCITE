@@ -81,3 +81,13 @@ string doubleToString(double x, int numDecimals){
 	ss << std::fixed << setprecision(numDecimals) << x;
 	return ss.str();
 }
+
+
+string roundDoubleToString(double argument, int numDecimals){
+	string strOfArgument = to_string(argument);
+	int dotOccurence = strOfArgument.find(".");
+	if(dotOccurence == string::npos)
+		return strOfArgument;
+	else
+		return strOfArgument.substr(0, dotOccurence+3);
+}	 

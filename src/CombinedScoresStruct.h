@@ -17,7 +17,6 @@
 double getSCContributionInCombinedScore(double SCScore, double bestSCScore, double w);
 double getBulkContributionInCombinedScore(double bulkScore, double SCScoreScalingCoeff, double BulkScoreScalingCoeff, double w);
 double calcCombinedSCBulkScore(double SCScore,double bulkScore, double bestIndependentSCScore, double SCScoreScalingCoeff, double bulkScoreScalingCoeff, double w);
-string roundDoubleToString(double argument, int numdecimals); // first rounds given double to numdecimals and then returns string representation
 
 struct CombinedScoresStruct{
 	double SCScore, bulkScore; // current values of SCITE and CITUP scores, as well as beta
@@ -60,9 +59,10 @@ struct CombinedScoresStruct{
 		if(w == 0)
 			scoreType = "BULK_SCORE";	
 		
-		SCScore = propSCScore;
+		SCScore   = propSCScore;
 		bulkScore = propBulkScore;
 		valuesCopy_boolMatrix(propAncMatrix, ancMatrix, n, n);
+/*
 		// Rep It CominedScore ScaledSCScore ScaledBulkScore NonScaledSCore NonScaledBulkScore w
 		summaryFile << setw(3)  << left << rep << setw(9) << left << it;
 		summaryFile << setw(18) << left << scoreType;
@@ -73,7 +73,7 @@ struct CombinedScoresStruct{
 		summaryFile << setw(10) << left << roundDoubleToString(-bulkScore, 2);
 		summaryFile << setw(8)  << left << roundDoubleToString(w, 2);
 		summaryFile << endl;
-		
+*/		
 		return;
 	}
 	

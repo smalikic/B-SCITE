@@ -53,7 +53,6 @@ double bulkScoreTree(bool** anc_matrix,  Mutation* mutations, int n, double* opt
 		IloModel model(env);
 	
 		IloFloatVarArray x = IloFloatVarArray(env, n, 0, 1);
-		//IloSemiContVarArray x = IloSemiContVarArray(env, n, 0.05, 1);
 		IloExpr sum_x_Constraint(env);
 		for(int i=0; i<n; i++)
 		{
@@ -122,22 +121,6 @@ double bulkScoreTree(bool** anc_matrix,  Mutation* mutations, int n, double* opt
 		double objValue = cplex.getObjValue();
 		env.end();
 
-	/*
-		 //The score below is the full score that accounts the approximation of binomial distribution using normal distribution
-		double fullFinalScore = 0.0; // this score accounts for all summands (including constants) existing when using Normal approximation for Binomial 
-		fullFinalScore += n*log(1.0/sqrt(2*pi));
-		double half_VAF, variance_coefficient, totalCount;
-		for(int i=0; i<n; i++)
-		{
-			half_VAF = mutations[i].getVAF()/2;
-			totalCount = mutations[i].mutReads + mutations[i].refReads;
-			double varianceCoeff = 1/(totalCount*(half_VAF)*(1-half_VAF));
-			fullFinalScore += ((0.5) * log(varianceCoeff));
-		}
-		fullFinalScore -= objValue;
-		return fullFinalScore;
-		// if we want full Final score to be returned then return(fullFinalScore); statement should come here
-	*/
 		return -objValue;  
 
 	} 
@@ -245,7 +228,7 @@ void writeOptimalMatricesToFile(int n, CombinedScoresStruct& optimalCombinedScor
 
 	MATRICES_SummaryFile << "ANCESTRY_MATRIX_OPTIMAL_COMBINED_SCORE" << endl;
 	MATRICES_SummaryFile << ancMatrixToString(optimalCombinedScore.ancMatrix, parentVectorSize);
-	MATRICES_SummaryFile << "PARENT_VECTOR_OPTIMAL_COMBINED_SCORE\t";
+/*	MATRICES_SummaryFile << "PARENT_VECTOR_OPTIMAL_COMBINED_SCORE\t";
 	int* parVecOptCombScoreTree = ancMatrixToParVector(optimalCombinedScore.ancMatrix, parentVectorSize);
 	MATRICES_SummaryFile << parVectorToString(parVecOptCombScoreTree, parentVectorSize);
 	delete [] parVecOptCombScoreTree;
@@ -263,6 +246,6 @@ void writeOptimalMatricesToFile(int n, CombinedScoresStruct& optimalCombinedScor
 	int* parVecOptBulkScoreTree = ancMatrixToParVector(optimalBulkScore.ancMatrix, parentVectorSize);
 	MATRICES_SummaryFile << parVectorToString(parVecOptBulkScoreTree, parentVectorSize);
 	delete [] parVecOptBulkScoreTree;
-
+*/
 	MATRICES_SummaryFile.close();
 }

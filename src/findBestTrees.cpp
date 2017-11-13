@@ -45,7 +45,7 @@ double defaultMoveProbs[] = {0.55, 0.4, 0.05};     // moves: change beta / prune
 double defaultMoveProbsBin[] = {0.4, 0.6};    // moves: change beta / prune&re-attach / swap leaf labels
 
 double bestIndependentSCScore = 0.0;
-double w = 0;
+double w = 0.50;
 double errorRateMove = 0.0;
 vector<double> treeMoves;
 double chi = 10;
@@ -62,7 +62,7 @@ int loops;          // number of loops within a MCMC
 double gamma = 1;
 double fd;          // rate of false discoveries (false positives 0->1)
 double ad1;          // rate of allelic dropout (false negatives 1->0)
-double doubletProb;
+double doubletProb = 0.1;
 int doubleMut = -1;
 double ad2 = 0.0;         // rate of allelic dropout (2->1)
 double cc = 0.0;          // rate of falsely discovered homozygous mutations (0->2)
@@ -124,10 +124,10 @@ int main(int argc, char* argv[])
 	string prefix = getOutputFilePrefix(fileName, outFilenamePrefix);
 
 	/* output the samples taken in the MCMC */
-	stringstream sampleOutputFile;
-	sampleOutputFile << prefix << ".samples";
-	writeToFile(sampleOutput, sampleOutputFile.str());
-	cout << "samples from posterior written to: " << sampleOutputFile.str() << "\n";
+//	stringstream sampleOutputFile;
+//	sampleOutputFile << prefix << ".samples";
+//	writeToFile(sampleOutput, sampleOutputFile.str());
+//	cout << "samples from posterior written to: " << sampleOutputFile.str() << "\n";
 
 	/* output the optimal trees found in individual files */
 
@@ -259,7 +259,8 @@ string getFileName(string prefix, string ending){
 string getFileName2(int i, string prefix, string ending, char scoreType){
 	stringstream fileName;
 	if(scoreType == 'm'){
-		fileName << prefix << "_ml" << i << ending;
+	//	fileName << prefix << "_ml" << i << ending;
+		fileName << prefix << ending;
 	}
 	else{
 		fileName << prefix << "_map" << i << ending;
@@ -270,7 +271,7 @@ string getFileName2(int i, string prefix, string ending, char scoreType){
 int readParameters(int argc, char* argv[]){
 	for (int i = 1; i < argc; ++i) {
 
-		if (strcmp(argv[i], "-i") == 0) {
+		if (strcmp(argv[i], "-SCFileLocation") == 0) {
 			if (i + 1 < argc) { fileName = argv[++i];}
 		} else if (strcmp(argv[i], "-t") == 0) {
 			if (i + 1 < argc) {
@@ -345,8 +346,6 @@ int readParameters(int argc, char* argv[]){
 					treeType = 't';
 		} else if (strcmp(argv[i], "-bulkFileLocation") == 0) {
 		 			bulkFileLocation = argv[++i];  
-		} else if (strcmp(argv[i], "-w") == 0){
-				w = atof(argv[++i]);
  		} else if (strcmp(argv[i], "-summaryFolder") == 0) {    // Salem: see if this one became redundant (param introduced by Salem)
 		 			summaryFolder = argv[++i];  
 		} else if (strcmp(argv[i], "-bestIndependentSCScore") == 0) {    // if not set, default value for bestIndependentSCScore is zero 
@@ -435,7 +434,7 @@ int** getDataMatrix(int n, int m, string fileName){
 
 
 int* getNumCellsMutPresentArray(int n, int m, string fileName){
-	cout << "Mutations absent from all cells:\t";
+//	cout << "Mutations absent from all cells:\t";
 	int* numCellsMutPresent = new int[n];
 	for(int i=0; i<n; i++)
 		numCellsMutPresent[i] = 0;
@@ -456,14 +455,14 @@ int* getNumCellsMutPresentArray(int n, int m, string fileName){
 			 in >> a;
 			 numCellsMutPresent[i] += a;
        		}
-		if(numCellsMutPresent[i] == 0)
-			cout << "\t" << i;
+	//	if(numCellsMutPresent[i] == 0)
+			//cout << "\t" << i;
     	}
-	cout << endl;
-	cout << "numCellsMutPresent:";
-	for(int i=0; i<n; i++)
-		cout << "\t" << numCellsMutPresent[i];
-	cout << endl;
+//	cout << endl;
+//	cout << "numCellsMutPresent:";
+//	for(int i=0; i<n; i++)
+//		cout << "\t" << numCellsMutPresent[i];
+//	cout << endl;
 
 	in.close();
 	

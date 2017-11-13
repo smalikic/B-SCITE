@@ -10,7 +10,6 @@
 
 CPLEX_DIRECTORY=
 CPLEX_BUILD=
-
 CC=
 
 bscite.exe: *.cpp

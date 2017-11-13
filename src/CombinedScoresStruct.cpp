@@ -17,13 +17,4 @@ double calcCombinedSCBulkScore(double SCScore, double bulkScore, double bestInde
        return getSCContributionInCombinedScore(SCScore, bestIndependentSCScore, w) + getBulkContributionInCombinedScore(bulkScore, SCScoreScalingCoeff, bulkScoreScalingCoeff, w); 
 }
 
-string roundDoubleToString(double argument, int numDecimals){
-	string strOfArgument = to_string(argument);
-	int dotOccurence = strOfArgument.find(".");
-	if(dotOccurence == string::npos)
-		return strOfArgument;
-	else
-		return strOfArgument.substr(0, dotOccurence+3);
-}	
 
- 
