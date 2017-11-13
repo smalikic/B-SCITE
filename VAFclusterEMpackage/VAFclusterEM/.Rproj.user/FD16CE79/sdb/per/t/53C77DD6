@@ -1,0 +1,20 @@
+{
+    "collab_server" : "",
+    "contents" : "library(KEGGREST)\nlibrary(org.Hs.eg.db)\nlibrary(xtable)\nrm(list = ls())\n\npathway.table <- function(genes) {\n\n    entrez <- select(org.Hs.eg.db, keys = genes, columns = \"ENTREZID\", keytype = \"SYMBOL\")\n\n    entrez$ENTREZID <- sapply(entrez$ENTREZID, function(x) paste(\"hsa\", x, sep = \":\"))\n\n    pathways <- sapply(entrez$ENTREZID, function(x) keggLink(\"pathway\", x))\n    pathways.all <- unlist(pathways)\n    pathways.all.unique <- unique(pathways.all)\n    genes.all.unique <- sapply(pathways.all.unique, function(x, pathways.all, entrez) {\n        paste(\n            entrez$SYMBOL[match(sapply(names(pathways.all)[which(pathways.all == x)], function(y) strsplit(y, \"\\\\.\")[[1]][1]), entrez$ENTREZID)], collapse = \",\"\n        )\n    } , pathways.all, entrez )\n    pathway.gene <- data.frame(cbind(pathways.all.unique, genes.all.unique), stringsAsFactors = FALSE)\n\n    pathway.gene <- pathway.gene[pathway.gene$pathways.all.unique != \"path:hsa04136\",] # Mistsing pathway path:hsa04136\n    if (is.list(class(pathway.gene))) {\n        pathway.info <- do.call(rbind, sapply(pathway.gene$pathways.all.unique, function(x) { y <- keggGet(x)[[1]]; c(y$NAME, y$CLASS)}))\n    } else if (nrow(pathway.gene) == 0) {\n        return()\n    }\n    else {\n        pathway.info <- sapply(pathway.gene$pathways.all.unique, function(x) { y <- keggGet(x)[[1]]; c(y$NAME, y$CLASS)}, simplify = FALSE)\n        pathway.length <- sapply(pathway.info, length)\n        pathway.info[pathway.length == 1] <- NULL\n        pathway.gene <- pathway.gene[pathway.length != 1,]\n        pathway.info <- data.frame(matrix(unlist(pathway.info), ncol = 2, byrow = TRUE), stringsAsFactors = FALSE)\n    }\n    print(pathway.gene)\n    pathway.gene <- data.frame(cbind(pathway.gene, pathway.info), stringsAsFactors = FALSE)\n    colnames(pathway.gene) <- c(\"pathway.id\",\"genes\",\"name\",\"class\")\n    pathway.gene <- pathway.gene[!grepl(\"Human Diseases\", pathway.gene$class),]\n    pathway.gene <- pathway.gene[order(sapply(strsplit(pathway.gene$genes, \",\"), length), decreasing = TRUE),]\n    pathway.gene[] <- lapply(pathway.gene, as.character)\n    pathway.gene$name <- sapply(strsplit(pathway.gene$name, \" - \"), \"[[\", 1)\n    pathway.gene <- pathway.gene[grepl(\",\", pathway.gene$genes),] # Remove pathways with only one gene\n    if(nrow(pathway.gene) > 0) print(xtable(pathway.gene[,c(3,2)]))\n    invisible()\n}\n\nsetwd(\"/Users/ththomas/polybox/Jack/TCGA-project/cytoscape/\")\n\n# With cancer types\ngenes <- read.table('supervised-types22-ordered/supervised13networkFeatures.txt', sep = \"\\t\", header = FALSE, stringsAsFactors = FALSE)\n\n# Inner and outer ring pathways\npathway.table(unique(genes$V1[is.na(genes$V3)]))\n\n# By cancer type\ngenes <- genes[!is.na(genes$V3),]\nsapply(unique(genes$V3), function(type, genes) {\n    print(type);\n    genes.type <- unique(genes$V1[genes$V3 == type])\n    if(length(genes.type) > 1) pathway.table(genes.type)\n}, genes)\n\n#Without cancer types\ngenes <- read.table('unsupervised-types22-ordered/unsupervised13networkFeatures.txt', sep = \"\\t\", header = FALSE, stringsAsFactors = FALSE)\npathway.table(unique(genes$V1[is.na(genes$V3)]))\n\ngenes <- genes[!is.na(genes$V3),]\nsapply(unique(genes$V3), function(type, genes) {\n    print(type);\n    genes.type <- unique(genes$V1[genes$V3 == type])\n    if(length(genes.type) > 1) pathway.table(genes.type)\n}, genes)\n\n",
+    "created" : 1493216911574.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2341284215",
+    "id" : "53C77DD6",
+    "lastKnownWriteTime" : 1493891053,
+    "last_content_update" : 1493891053438,
+    "path" : "~/polybox/Jack/TCGA-project/pathway_analysis/supervised22/supervised22-pathway.R",
+    "project_path" : null,
+    "properties" : {
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

@@ -1,0 +1,1 @@
+RScript clusterVAFs.R example.input example.output 8
