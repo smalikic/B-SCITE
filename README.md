@@ -34,8 +34,7 @@ Assuming that in the previous step, when running run_B-SCITE.py, we set prefix o
 
 ### Compression of mutation trees into clonal trees
 
-Clustering is performed along the chains formed by nodes x that lie between nodes A and B such that each of A and B is different and is either root node or has at least two descendants (i.e. is node where branching occurs). Also, we assume that between A and B there is no other node C on this path having more than one descendants. Code for performing clustering is available in the folder VAFclusterEMpackage including example.input. More details about running this script will be provided in the following days.
-
+Clustering is performed along the chains formed by nodes x that lie between nodes A and B such that each of A and B is different and is either root node or has at least two descendants (i.e. is node where branching occurs). Also, we assume that the path between A and B does not contain a node C having more than one descendants. Code for performing clustering of mutations along such chains is available in the folder VAFclusterEMpackage. It can be installed from the provided source code by calling install.packages(PATH_SOURCE_FOLDER, repos=NULL, type="source"), where PATH_SOURCE_FOLDER encodes the path to the content of VAFclusterEM folder (for example, ./VAFclusterEMpackage/VAFclusterEM/). Folder VAFclusterEMpackage contains the examples of input (example.input) and output (example.output) of running mutation clustering script. In the input file, mutations are identified via unique ID provided in the first row and corresponding entry in the second row represent VAFs of the mutation. In the output file, entries in the second row represent unique identifier of the cluster where corresponding mutation is assigned. 
 
 ## Details about running tools in benchmarking step
 ---------------------------------------------------
