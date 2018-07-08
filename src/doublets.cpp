@@ -106,8 +106,6 @@ double currAvgRelevantDoubletScoreSum = -DBL_MAX;
 double precision = 1e-6;    // the precision of doubles basically
 //default_random_engine generator;
 
-double frac_w_Equals_1 = 0.0;
-
 
 //COMMENT SALEM: can't we remove betterLogScore from the calculations below ?
 /* combined probability for singlet and doublet for given p: (1-p)*L_0 + p * L_1 */
@@ -247,12 +245,15 @@ double scoreTreeFastWithDoublets(int*parent, int n, int m, double** logScores, i
 
 
 
-std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* errorRates, int noOfReps, int noOfLoops, double gamma, vector<double> moveProbs, int n, int m, int** dataMatrix, char scoreType, int* trueParentVec, int step, bool sample, double chi, double priorSd_beta, double priorSd_alpha, bool useTreeList, char treeType, double doubletProb, int doubleMut, Mutation* bulkMutations, double w, string outFilenamePrefix, double* optimal_x, double* optimal_y, int* numCellsMutPresent, double bestIndependentSCScore){
+std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* errorRates, int noOfReps, int noOfLoops, double gamma, vector<double> moveProbs, int n, int m, int** dataMatrix, char scoreType, int* trueParentVec, int step, bool sample, double chi, double priorSd_beta, double priorSd_alpha, bool useTreeList, char treeType, double doubletProb, int doubleMut, Mutation* bulkMutations, double w, string outFilenamePrefix, int* numCellsMutPresent){
 
-	cout << endl << " ------ Starting MCMC with " << noOfReps << " repeats and " << noOfLoops << " loops ------" << endl;
+	cout << "numOfMutations\t" << n << endl;
+	cout << "numOfCells\t" << m << endl;
+	cout << "numOfReps\t"  << noOfReps  << endl;
+	cout << "numOfLoops\t" << noOfLoops << endl;
 	ofstream SCORES_SummaryFile;
-//	SCORES_SummaryFile.open((outFilenamePrefix + ".scores").c_str(), ios::out);
-//	SCORES_SummaryFile << "Rep\tIt\tScoreType\tScoreValue\tSCContribution\tbulkContribution\trawSCScore\trawBulkScore\tw" << endl;
+	SCORES_SummaryFile.open((outFilenamePrefix + ".scores").c_str(), ios::out);
+	SCORES_SummaryFile << "Rep\tIt\tScoreType\tScoreValue\tSCContribution\tbulkContribution\trawSCScore\trawBulkScore\tw" << endl;
 
 	double burnInPhase = 0.25;                   // first quarter of steps are burn in phase
 	unsigned int optStatesAfterBurnIn = 0;
@@ -264,6 +265,7 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 	//double doubletBetaPriorSd = 0.05;                                     //  prior sd for AD error rate
 	//double doublet_jumpSd = doubletBetaPriorSd/chi;
 
+	// in findBesTrees.cpp priorSd=0.1 and then: (i) priorSd_alpha=0.01*priorSd and (ii) priorSd_beta=priorSd
 	Beta_Distr alpha (errorRates[0], priorSd_alpha, DOUBLET_UNIFORM_BETA_DISTR_alpha);                  // prior distribution alpha (FD)
 	Beta_Distr beta (errorRates[1] + errorRates[2], priorSd_beta, DOUBLET_UNIFORM_BETA_DISTR_beta);     // prior distribution beta (AD1 + AD2)
 
@@ -273,8 +275,8 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 
 	if(treeType=='t'){parentVectorSize = (2*m)-2;}                     // transposed case: binary tree, m leafs and m-1 inner nodes, root has no parent
 
-
-	double jumpSd_beta = beta.sd/chi;             // chi: scaling of the known error rate for the MH jump; resulting jump sd
+	// current default for chi is 10
+	double jumpSd_beta = beta.sd/chi;             // chi: scaling of the known error rate for the MH jump; resulting jump sd 
 	double jumpSd_alpha = alpha.sd/chi;           // chi: scaling of the known error rate for the MH jump; resulting jump sd
 
 
@@ -286,18 +288,13 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 	double bestRelDoubletRate = -1.0;
 	double bestDoubletRate = doubletProb;
 
-
-
-	double SCScoreScalingCoeff   = getSCScoreScalingCoeff(dataMatrix, m, n, bestAlpha, bestBeta);
-	double bulkScoreScalingCoeff = getBulkScoreScalingCoeff(bulkMutations, n);
-	CombinedScoresStruct optimalBulkScore     = CombinedScoresStruct(n, m, dataMatrix, bulkMutations, 0.0, bestAlpha, bestBeta, bestIndependentSCScore);
-	CombinedScoresStruct optimalSCScore       = CombinedScoresStruct(n, m, dataMatrix, bulkMutations, 1.0, bestAlpha, bestBeta, bestIndependentSCScore);
-	CombinedScoresStruct optimalCombinedScore = CombinedScoresStruct(n, m, dataMatrix, bulkMutations, w, bestAlpha, bestBeta, bestIndependentSCScore);
+	CombinedScoresStruct optimalBulkScore     = CombinedScoresStruct(n, m, 0.0);
+	CombinedScoresStruct optimalSCScore       = CombinedScoresStruct(n, m, 1.0);
+	CombinedScoresStruct optimalCombinedScore = CombinedScoresStruct(n, m,  w);
 
 	clock_t lastTimeStamp = clock();
 	for(int r=0; r<noOfReps; r++){   // repeat the MCMC, start over with random tree each time, only best score and list of best trees is kept between repetitions
-		double topologySearch_w = 1.0; // w value used when deciding about move from current to next tree
-		cout << endl << "REPEAT NUMBER: " << r << endl;
+		cout << endl << "REPETITION NUMBER: " << r << endl;
 
 		int*   currTreeParentVec;
 		if(treeType=='m'){
@@ -328,7 +325,7 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 		if(treeType=='m')
 		{ 
 			currTreeLogScore = scoreTreeFastWithDoublets(currTreeParentVec, n, m, currLogScores, dataMatrix, currTreeAncMatrix, currDoubletProb, propDoubletProb, propRelDoubletProb, doubleMut);
-			currTreeBulkScore = bulkScoreTree(currTreeAncMatrix, bulkMutations, n, optimal_x, optimal_y, numCellsMutPresent, w);
+			currTreeBulkScore = bulkScoreTree(currTreeAncMatrix, bulkMutations, n, numCellsMutPresent, w);
 			
 			optimalSCScore.updateScore(r, -1, currTreeLogScore, currTreeBulkScore, currTreeAncMatrix, SCORES_SummaryFile);
 			optimalBulkScore.updateScore(r, -1, currTreeLogScore, currTreeBulkScore, currTreeAncMatrix, SCORES_SummaryFile);
@@ -345,27 +342,28 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 		double currScore = currTreeLogScore + currThetaLogScore;
 		//cout << "start score: " << currScore << "\n";
 		
-		currTreeCombinedScore = calcCombinedSCBulkScore(currTreeLogScore, currTreeBulkScore, bestIndependentSCScore, SCScoreScalingCoeff, bulkScoreScalingCoeff, topologySearch_w);
-		int switch_w_It = int(frac_w_Equals_1 * noOfLoops); // defines index of iteration where w = 1 is replaced with actual w
+		currTreeCombinedScore = calcCombinedSCBulkScore(currTreeLogScore, currTreeBulkScore, w);
 
+		int totalMovesChangingTheta = 0;
+		int totalMovesChangingTree  = 0;	
 		for(int it=0; it<noOfLoops; it++)
 		{
-        		
-			if(it == switch_w_It)
-			{
-				topologySearch_w = w;
-				currTreeCombinedScore = calcCombinedSCBulkScore(currTreeLogScore, currTreeBulkScore, bestIndependentSCScore, SCScoreScalingCoeff, bulkScoreScalingCoeff, topologySearch_w);
-			}
-			
-			int reportWhenDivisibleBy = 1000;
+        			
+			int reportWhenDivisibleBy = 10000;
 			//int reportWhenDivisibleBy = noOfLoops/10;
 			if(it % reportWhenDivisibleBy == 0){
 				cout.precision(5);
-				cout << "At MCMC (repeat,iteration) = (" << r << "," << it << ")\t and best score is " << optimalCombinedScore.getScore() << endl;
+        			cout << "At mcmc repetition " << r << "/" << noOfReps << ", step " << it << ": best tree score " << bestTreeLogScore;
+        			cout << " and best beta " << bestBeta << " and best alpha " << bestAlpha << " and best overall score " << bestScore;
+        			cout << " and best rel. doublet rate " <<  bestRelDoubletRate << " and best doublet rate " << bestDoubletRate << " \n";
 				clock_t currentTimeStamp = clock();
-			//	//cout << "CLOCKS_PER SEC\t" << CLOCKS_PER_SEC << endl;
-			//	cout << "Total time (in seconds) between latest reported (r,it) pair\t" << (double(currentTimeStamp-lastTimeStamp))/CLOCKS_PER_SEC << endl << endl; 
+				cout << "CLOCKS_PER SEC\t" << CLOCKS_PER_SEC << endl;
+				cout << "Total time (in seconds) between latest reported (r,it) pair\t" << (double(currentTimeStamp-lastTimeStamp))/CLOCKS_PER_SEC << endl;
+				cout << "New theta proposed " << totalMovesChangingTheta << " and new tree proposed " << totalMovesChangingTree << " times.\n";
+				totalMovesChangingTheta = 0;
+				totalMovesChangingTree  = 0;
 				lastTimeStamp = currentTimeStamp;
+				cout << endl;
     			}
 
         		bool moveAccepted = false;                                           // Is the MCMC move accepted?
@@ -374,11 +372,10 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
         		//moveChangesDoubletProb = changeBeta(changeDoubletProb);            // true if move changes the probability of having a doublet
         		//if(moveChangesDoubletProb==false){
         		bool moveChangesTheta = changeBeta(moveProbs[0]);                     // true if this move changes beta, not the tree
-
-
-			/* Commented by SALEM, should be uncommented if we decide to learn alpha and beta
+			
 			if(moveChangesTheta)                                                 // new beta is proposed, log scores change tree is copy of current tree
 			{
+				totalMovesChangingTheta += 1;
 				double propBeta = proposeNewBeta(currBeta, jumpSd_beta);
 				double propAlpha = proposeNewAlpha(currAlpha, jumpSd_alpha);
 
@@ -395,9 +392,10 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 				double** propLogScores = deepCopy_doubleMatrix(currLogScores, 4, 2);
 				updateLogScoresAlphaBeta(propLogScores, propBeta, propAlpha);
 				double propBetaLogScore = beta.logBetaPDF(propBeta);
-					double propAlphaLogScore = alpha.logBetaPDF(propAlpha);
+				double propAlphaLogScore = alpha.logBetaPDF(propAlpha);
 				double propThetaLogScore =  m*doublet_totalzeros*log(1-propAlpha) + propBetaLogScore + propAlphaLogScore;
 				double propTreeLogScore;
+				double propTreeBulkScore = currTreeBulkScore;
 
 				if(treeType=='m'){ propTreeLogScore = scoreTreeFastWithDoublets(currTreeParentVec, n, m, propLogScores, dataMatrix, currTreeAncMatrix, currDoubletProb, propDoubletProb, propRelDoubletProb, doubleMut);   // compute the new tree score for new beta
 									//cout << "proposed tree score diff:  " << propTreeLogScore- currTreeLogScore << "     prop score: " << propTreeLogScore << "  curr score: " << currTreeLogScore << "\n";
@@ -405,35 +403,39 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 				}
 				else{              propTreeLogScore = getBinTreeScore(dataMatrix, n, m, propLogScores, currTreeParentVec);}
 
-				if (sample_0_1() < exp((propTreeLogScore+propThetaLogScore-currTreeLogScore-currThetaLogScore)*gamma)){               // the proposed move is accepted
-					moveAccepted = true;
-					free_doubleMatrix(currLogScores);
+				if (sample_0_1() < exp((propTreeLogScore+propThetaLogScore-currTreeLogScore-currThetaLogScore)*gamma)){		// the proposed move is accepted	
+			    	    moveAccepted = true;
+				    free_doubleMatrix(currLogScores);
 				    currTreeLogScore  = propTreeLogScore;                                       // update score of current tree
+				    currTreeCombinedScore = calcCombinedSCBulkScore(propTreeLogScore, propTreeBulkScore, w);
+				    currTreeBulkScore = propTreeBulkScore;
 				    currBeta = propBeta;                                                        // the current AD rate
 				    currAlpha = propAlpha;
 				    currBetaLogScore = propBetaLogScore;
 				    currAlphaLogScore = propAlphaLogScore;
 				    currThetaLogScore = propThetaLogScore;
-				    currScore = currTreeLogScore+currThetaLogScore;                          // combined score of current tree and current beta
+				    currScore = currTreeLogScore + currThetaLogScore;                          // combined score of current tree and current beta
 				    currLogScores = propLogScores;
 				    currAvgSingletScoreSum = propAvgSingletScoreSum;
-				    currAvgRelevantDoubletScoreSum	= propAvgRelevantDoubletScoreSum;
+				    currAvgRelevantDoubletScoreSum = propAvgRelevantDoubletScoreSum;
 				    currDoubletProb = propDoubletProb;
+				    optimalSCScore.updateScore(r, it, propTreeLogScore, propTreeBulkScore, currTreeAncMatrix, SCORES_SummaryFile);
+				    optimalCombinedScore.updateScore(r, it, propTreeLogScore, propTreeBulkScore, currTreeAncMatrix, SCORES_SummaryFile);
 				}
 				else{
 					delete [] propLogScores[0];
 					delete [] propLogScores;
 				}
 			}
-			else*/
+			else
 			{                                   // move changed tree
+				totalMovesChangingTree += 1;
 				double nbhcorrection = 1.0;
         			int* propTreeParVec;
         			double propTreeLogScore;
 				double propTreeBulkScore;
 				double propTreeCombinedScore;
 				bool** propTreeAncMatrix;
-		
         			if(treeType=='m')
 				{
 
@@ -449,26 +451,21 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
         				}
 		
         				propTreeAncMatrix = parentVector2ancMatrix(propTreeParVec, parentVectorSize);
-        				propTreeLogScore = scoreTreeFastWithDoublets(propTreeParVec, n, m, currLogScores, dataMatrix, propTreeAncMatrix, currDoubletProb, propDoubletProb, propRelDoubletProb, doubleMut);
-					propTreeBulkScore = bulkScoreTree(propTreeAncMatrix, bulkMutations, n, optimal_x, optimal_y, numCellsMutPresent, w);
-					
-					optimalSCScore.updateScore(r, it, propTreeLogScore, propTreeBulkScore, propTreeAncMatrix, SCORES_SummaryFile);
-					optimalBulkScore.updateScore(r, it, propTreeLogScore, propTreeBulkScore, propTreeAncMatrix, SCORES_SummaryFile);
-					optimalCombinedScore.updateScore(r, it, propTreeLogScore, propTreeBulkScore, propTreeAncMatrix, SCORES_SummaryFile);
+        				propTreeLogScore  = scoreTreeFastWithDoublets(propTreeParVec, n, m, currLogScores, dataMatrix, propTreeAncMatrix, currDoubletProb, propDoubletProb, propRelDoubletProb, doubleMut);
+					propTreeBulkScore = bulkScoreTree(propTreeAncMatrix, bulkMutations, n, numCellsMutPresent, w);
+					propTreeCombinedScore = calcCombinedSCBulkScore(propTreeLogScore, propTreeBulkScore, w);
         				//cout << "proposed score: " << propTreeLogScore << " after tree move, before tree score: " << currTreeLogScore << "\n";
         				free_boolMatrix(propTreeAncMatrix);
         			}
         			else
 				{              
-					propTreeParVec = proposeNextBinTree(moveProbs, m, currTreeParentVec, currTreeAncMatrix);
+					propTreeParVec   = proposeNextBinTree(moveProbs, m, currTreeParentVec, currTreeAncMatrix);
         		                propTreeLogScore = getBinTreeScore(dataMatrix, n, m, currLogScores, propTreeParVec);
 				}
 
-				propTreeCombinedScore = calcCombinedSCBulkScore(propTreeLogScore, propTreeBulkScore, bestIndependentSCScore, SCScoreScalingCoeff, bulkScoreScalingCoeff, topologySearch_w);
         			//if (sample_0_1() < nbhcorrection*exp((propTreeLogScore-currTreeLogScore)*gamma)) // commented by SALEM
 				// the proposed tree is accepted
-				double randomNumber_0_1 = sample_0_1();
-				if(((propTreeCombinedScore - currTreeCombinedScore)>20) || (sample_0_1() < nbhcorrection*exp((propTreeCombinedScore - currTreeCombinedScore)*gamma)))
+				if(20 < (propTreeCombinedScore - currTreeCombinedScore) || sample_0_1() < nbhcorrection*exp((propTreeCombinedScore - currTreeCombinedScore)*gamma))
 				{
         				moveAccepted = true;
         				free_boolMatrix(currTreeAncMatrix);                                            // discard outdated tree
@@ -484,6 +481,11 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
         				currDoubletProb = propDoubletProb;
         				currRelDoubletProb = propRelDoubletProb;
         				//cout  << "curr p = " << currDoubletProb << " current relevant doublet prob: " << currRelDoubletProb << "\n";
+					propTreeAncMatrix = parentVector2ancMatrix(propTreeParVec, parentVectorSize);
+					optimalSCScore.updateScore(r, it, propTreeLogScore, propTreeBulkScore, propTreeAncMatrix, SCORES_SummaryFile);
+					optimalBulkScore.updateScore(r, it, propTreeLogScore, propTreeBulkScore, propTreeAncMatrix, SCORES_SummaryFile);
+					optimalCombinedScore.updateScore(r, it, propTreeLogScore, propTreeBulkScore, propTreeAncMatrix, SCORES_SummaryFile);
+					free_boolMatrix(propTreeAncMatrix);
         			}
         			else
 				{
@@ -512,7 +514,7 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 
         		/* Update best tree in case we have found a new best one */
 			// Below is commented by SALEM because we do not search for alpha, beta, doublet rate now
-			/*  
+			 
      		 	if(currScore > bestScore)
 			{
         			optStatesAfterBurnIn = 0;                    // new opt state found, discard old count
@@ -522,7 +524,7 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
         			bestAlpha = currAlpha;
         			bestRelDoubletRate = currRelDoubletProb;
         			bestDoubletRate = currDoubletProb;
-        			//cout << "new best score: " << bestTreeLogScore << "   " << currDoubletProb << " current relevant doublet prob: " << currRelDoubletProb << "   all doublets rate: " << currDoubletProb << " beta: " << currBeta << "  alpha: " << currAlpha << "\n";
+        			//cout << endl << "new best score: " << bestTreeLogScore << "   " << currDoubletProb << " current relevant doublet prob: " << currRelDoubletProb << "   all doublets rate: " << currDoubletProb << " beta: " << currBeta << "  alpha: " << currAlpha << "\n";
         		}
 			
 
@@ -530,18 +532,7 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 	    		if(currScore == bestScore && it>=burnIn)
 			{
         			optStatesAfterBurnIn++;
-        		}
-			*/			
-			if(moveAccepted)
-			{
-				optStatesAfterBurnIn = 0;
-			}
-
-			if(currTreeCombinedScore == optimalCombinedScore.getScore() && it >= burnIn)
-			{
-				optStatesAfterBurnIn++;
-			}
-
+        		}	
        		 } // the end of iteration
      
 	   	delete [] currTreeParentVec;
@@ -555,10 +546,10 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 	cout.precision(17);
 	cout << endl << endl;
 	
-	cout << "Best score found:\t" << optimalCombinedScore.getScore() <<  "\n";
+	cout << "best log score for tree:\t" << bestTreeLogScore <<  "\n";
 	cout << "#optimal steps after burn-in:\t" << optStatesAfterBurnIn << "\n";
 	cout << "total #steps after burn-in:\t" << noStepsAfterBurnin << "\n";
-	cout << "#optimal steps after burn-in:\t" << (1.0*optStatesAfterBurnIn)/noStepsAfterBurnin << "\n";
+	cout << "%optimal steps after burn-in:\t" << (1.0*optStatesAfterBurnIn)/noStepsAfterBurnin << "\n";
 	if(moveProbs[0]!=0.0){
 		cout << "best value for beta:\t" << bestBeta << "\n";
 		cout << "best value for alpha:\t" << bestAlpha << "\n";
@@ -568,9 +559,8 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 	}
 
 	optimalCombinedScore.printSummaryOfScores();
-	//writeOptimalVAFToFile(n, bulkMutations, optimal_x, optimal_y, outFilenamePrefix);
 	writeOptimalMatricesToFile(n, optimalCombinedScore, optimalSCScore, optimalBulkScore, outFilenamePrefix);
-//	SCORES_SummaryFile.close();
+	SCORES_SummaryFile.close();
 	
 
 	return sampleOutput.str();

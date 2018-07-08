@@ -32,7 +32,6 @@ double epsilon = 0.000000000001;  // how much worse than the current best a scor
 /* Computes the score of a new candidate tree. First a fast approximate score is computed, then if the new score is better,   */
 /* or slightly worse than the best score so far, a more accurate but more costly score computation is done.                    */
 double scoreTree(int n, int m, double** logScores, int** dataMatrix, char type, int* parentVector, double bestTreeLogScore){
-// SALEM: Code below now needs revision because we are not moving anymore solely in the SCITE + CITUP search space
 //	double approxScore = scoreTreeFast(n, m, logScores, dataMatrix, type, parentVector);
 
 //	if(approxScore > bestTreeLogScore-epsilon)
@@ -296,6 +295,39 @@ void updateLogScores(double** logScores, double newAD){
 	}
 	logScores[3][1] = log(1.0);          // value N/A,  true 1
 }
+
+
+/* updates the log scores after a new AD rate was accepted in the MCMC */
+void updateLogScoresAlphaBeta(double** logScores, double newAD, double newFD){
+
+    double newAD1 = newAD;      // the default case: there are no homozygous mutation observed
+    double newAD2 = 0.0;
+    double CC = 0.0;
+
+    if(logScores[2][1] != 0){          // other case: homozygous mutations were called
+        newAD1 = newAD/2;          // for simplicity we set both dropout rates to 1/2 of the new value
+        newAD2 = newAD/2;          // learning the rates separately could also be done
+        CC = newFD*newAD1;
+    }
+
+      logScores[0][0] = log(1.0-newFD-CC);  // observed 0, true 0
+    logScores[1][0] = log(newFD);         // observed 1, true 0
+    if(CC!=0.0){
+        logScores[2][0] = log(CC);         // observed 2, true 0
+    }
+
+    logScores[0][1] = log(newAD1);          // observed 0, true 1
+    logScores[1][1] = log(1.0-(newAD));     // observed 1, true 1
+    if(newAD2 != 0.0){
+        logScores[2][1] = log(newAD2);     // observed 2, true 1
+    }
+    else{
+        logScores[2][1] = 0;
+    }
+    logScores[3][1] = log(1.0);          // value N/A,  true 1
+}
+
+
 
 
 double** getScores(double FD, double AD1, double AD2, double CC){

@@ -36,7 +36,7 @@ double getVarianceCoeffInBulkScoring(Mutation mut){
 }
 
 
-double bulkScoreTree(bool** anc_matrix,  Mutation* mutations, int n, double* optimal_x, double* optimal_y, int* numCellsMutPresent, double w){
+double bulkScoreTree(bool** anc_matrix,  Mutation* mutations, int n, int* numCellsMutPresent, double w){
 	if(w==1.00)
 		return 0;
 
@@ -53,6 +53,7 @@ double bulkScoreTree(bool** anc_matrix,  Mutation* mutations, int n, double* opt
 		IloModel model(env);
 	
 		IloFloatVarArray x = IloFloatVarArray(env, n, 0, 1);
+		//IloSemiContVarArray x = IloSemiContVarArray(env, n, 0.05, 1);
 		IloExpr sum_x_Constraint(env);
 		for(int i=0; i<n; i++)
 		{
@@ -103,7 +104,7 @@ double bulkScoreTree(bool** anc_matrix,  Mutation* mutations, int n, double* opt
 		double cplex_seconds = endTime - startTime;
 		IloCplex::CplexStatus status = cplex.getCplexStatus();
 		
-
+/*
 		for(int i=0; i<n; i++)
 		{
 			optimal_x[i] = cplex.getValue(x[i]);
@@ -117,16 +118,32 @@ double bulkScoreTree(bool** anc_matrix,  Mutation* mutations, int n, double* opt
 					optimal_y[i] += optimal_x[j];
 		}
 
-
+*/
 		double objValue = cplex.getObjValue();
 		env.end();
 
+	/*
+		 //The score below is the full score that accounts the approximation of binomial distribution using normal distribution
+		double fullFinalScore = 0.0; // this score accounts for all summands (including constants) existing when using Normal approximation for Binomial 
+		fullFinalScore += n*log(1.0/sqrt(2*pi));
+		double half_VAF, variance_coefficient, totalCount;
+		for(int i=0; i<n; i++)
+		{
+			half_VAF = mutations[i].getVAF()/2;
+			totalCount = mutations[i].mutReads + mutations[i].refReads;
+			double varianceCoeff = 1/(totalCount*(half_VAF)*(1-half_VAF));
+			fullFinalScore += ((0.5) * log(varianceCoeff));
+		}
+		fullFinalScore -= objValue;
+		return fullFinalScore;
+		// if we want full Final score to be returned then return(fullFinalScore); statement should come here
+	*/
 		return -objValue;  
 
 	} 
 
 	catch (IloAlgorithm::CannotExtractException& e) { 
-		cout << "ERROR_SALEM" << endl;
+		cout << "Error in bulkScoreTree function. Problem with CPLEX.\n" << endl;
 		std::cerr << "CannoExtractException: " << e << std::endl; 
 		IloExtractableArray failed = e.getExtractables(); 
 		for (IloInt i = 0; i < failed.getSize(); ++i) 
@@ -135,7 +152,7 @@ double bulkScoreTree(bool** anc_matrix,  Mutation* mutations, int n, double* opt
 	}
  
 	catch(const IloException& e){
-		cout << "ERROR_SALEM" << endl;
+		cout << "Error in bulkScoreTree function. Problem with CPLEX.\n" << endl;
 		cerr << e;
 	}
 }
@@ -146,7 +163,7 @@ Mutation* readBulkInput(string bulkFileLocation)
 {
 	ifstream bulkFile(bulkFileLocation, ifstream::in);
 	if(!bulkFile.is_open()){
-		cout << "There probably does not exist file " << bulkFileLocation << "\t EXITING !!!" << endl;
+		cout << "Error. Can not open bulk file " << bulkFileLocation << "\t. File probably does not exist. Exiting!!!" << endl;
 		assert(false);
 	};
 	
@@ -184,41 +201,6 @@ double absFunctionLocal(double x){
 		return -x;
 }
 
-void writeOptimalVAFToFile(int n, Mutation* bulkMutations, double* optimal_x, double* optimal_y, string outFilenamePrefix){
-	int width = 12;
-	double min_significant_x   = 0.03;
-	double accurracy_tolerance = 0.02;
-	ofstream VAFSummaryFile;
-	VAFSummaryFile.open((outFilenamePrefix + ".VAF").c_str(), ios::out);
-	VAFSummaryFile << setw(width) << left << "mutID";
-	VAFSummaryFile << setw(width) << left << "optimal_x";
-	VAFSummaryFile << setw(width) << left <<  "optimal_y";
-	VAFSummaryFile << setw(width) << left <<  "trueVAF";
-	VAFSummaryFile << setw(18) << left << "ACCURRACY";
-	VAFSummaryFile << setw(15) << left << ("optimal_x>" + doubleToString(min_significant_x, 2));
-	VAFSummaryFile << endl;
-	
-	for(int i=0; i<n; i++)
-	{
-		VAFSummaryFile << setw(width) << left << bulkMutations[i].getID();
-		VAFSummaryFile << setw(width) << setprecision(2) << left <<  optimal_x[i];
-		VAFSummaryFile << setw(width) << setprecision(2) << left << optimal_y[i];
-		VAFSummaryFile << setw(width) << setprecision(2) << left << bulkMutations[i].getVAF();
-
-		if(absFunctionLocal(bulkMutations[i].getVAF() - optimal_y[i]) > accurracy_tolerance)
-			VAFSummaryFile << setw(18) << left << "INACCURRATE";
-		else
-			VAFSummaryFile << setw(18) << left << "ACC";
-
-		if(optimal_x[i] > min_significant_x)
-			VAFSummaryFile << setw(15) <<  setprecision(2) << left << optimal_x[i];
-
-		VAFSummaryFile << endl;	
-	}
-	VAFSummaryFile.close();	
-}
-
-
 
 void writeOptimalMatricesToFile(int n, CombinedScoresStruct& optimalCombinedScore, CombinedScoresStruct& optimalSCScore, CombinedScoresStruct& optimalBulkScore, string outFilenamePrefix){
 	int parentVectorSize = n;
@@ -228,7 +210,7 @@ void writeOptimalMatricesToFile(int n, CombinedScoresStruct& optimalCombinedScor
 
 	MATRICES_SummaryFile << "ANCESTRY_MATRIX_OPTIMAL_COMBINED_SCORE" << endl;
 	MATRICES_SummaryFile << ancMatrixToString(optimalCombinedScore.ancMatrix, parentVectorSize);
-/*	MATRICES_SummaryFile << "PARENT_VECTOR_OPTIMAL_COMBINED_SCORE\t";
+	MATRICES_SummaryFile << "PARENT_VECTOR_OPTIMAL_COMBINED_SCORE\t";
 	int* parVecOptCombScoreTree = ancMatrixToParVector(optimalCombinedScore.ancMatrix, parentVectorSize);
 	MATRICES_SummaryFile << parVectorToString(parVecOptCombScoreTree, parentVectorSize);
 	delete [] parVecOptCombScoreTree;
@@ -246,6 +228,6 @@ void writeOptimalMatricesToFile(int n, CombinedScoresStruct& optimalCombinedScor
 	int* parVecOptBulkScoreTree = ancMatrixToParVector(optimalBulkScore.ancMatrix, parentVectorSize);
 	MATRICES_SummaryFile << parVectorToString(parVecOptBulkScoreTree, parentVectorSize);
 	delete [] parVecOptBulkScoreTree;
-*/
+
 	MATRICES_SummaryFile.close();
 }

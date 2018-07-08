@@ -8,7 +8,7 @@
 #ifndef DOUBLETS_H_
 #define DOUBLETS_H_
 
-std::string runMCMCbetaDoublet(std::vector<struct treeBeta>& bestTrees, double* errorRates, int noOfReps, int noOfLoops, double gamma, std::vector<double> moveProbs, int n, int m, int** dataMatrix, char scoreType, int* trueParentVec, int step, bool sample, double chi, double priorSd_beta, double priorSd_alpha, bool useTreeList, char treeType, double doubletProb, int doubleMut, Mutation* bulkMutations, double w, string outFilenamePrefix, double* optimal_x, double* optimal_y, int* numCellsMutPresent, double bestIndependentSCScore);
+std::string runMCMCbetaDoublet(std::vector<struct treeBeta>& bestTrees, double* errorRates, int noOfReps, int noOfLoops, double gamma, std::vector<double> moveProbs, int n, int m, int** dataMatrix, char scoreType, int* trueParentVec, int step, bool sample, double chi, double priorSd_beta, double priorSd_alpha, bool useTreeList, char treeType, double doubletProb, int doubleMut, Mutation* bulkMutations, double w, string outFilenamePrefix, int* numCellsMutPresent);
 
 double getSampleSingletScoreFast(double* singletScores, int n, int*bft);
 double sumScoreTreeFastSinglet(int n, int m, double** logScores, int** dataMatrix, int* parent);

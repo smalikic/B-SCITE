@@ -28,6 +28,7 @@ double getTrueScore(int** matrix, double** logScores);
 double getSumAttachmentScoreAccurate(int* parent, int n, double** logScores, int* dataVector, int* bft);
 double** getLogScores(double FD, double AD1, double AD2, double CC);
 void updateLogScores(double** logScores, double newAD);
+void updateLogScoresAlphaBeta(double** logScores, double newAD, double newFD);
 double** getScores(double FD, double AD1, double AD2, double CC);
 double* getTrueScores(int*** matrix, int n, double** logScores);
 void printLogScores(double** logScores);

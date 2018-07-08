@@ -13,5 +13,4 @@ int getNumZerosInD(int** dataMatrix, int m, int n);
 double getSCScoreScalingCoeff(int** dataMatrix, int m, int n, double alpha, double beta);
 double getBulkScoreScalingCoeff(Mutation* bulkMutations, int n);
 string doubleToString(double x, int numDecimals);
-string roundDoubleToString(double argument, int numdecimals); // first rounds given double to numdecimals and then returns string representation
 #endif

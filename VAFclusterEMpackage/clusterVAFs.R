@@ -6,7 +6,11 @@ header <- colnames(datas)
 
 library(VAFclusterEM)
 
-coverage <- 1e4 # coverage of data
+coverage <- 2000 # coverage of data
+if(length(args)>3){
+  coverage <- as.numeric(args[4])
+}
+
 
 minK <- 1
 if(length(args)>2){

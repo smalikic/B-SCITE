@@ -58,36 +58,8 @@ double getBulkScoreScalingCoeff(Mutation* bulkMutations, int n){
 	return result;
 }
 
-
-/*
-double getBulkScoreScalingCoeff(Mutation* bulkMutations, int n){
-	double maxVAF = 0.0;
-	for(int i=0; i<n; i++){
-		if(bulkMutations[i].getVAF() > maxVAF){maxVAF = bulkMutations[i].getVAF();}
-	}
-
-	double result = 0;
-	for(int i=0; i<n; i++){
-		double differenceFromMaxVAF = bulkMutations[i].getVAF() - maxVAF; 
-		result += getVarianceCoeffInBulkScoring(bulkMutations[i]) * differenceFromMaxVAF * differenceFromMaxVAF;
-	}
-	
-	return result;
-}
-*/
-
 string doubleToString(double x, int numDecimals){
 	std::stringstream ss;
 	ss << std::fixed << setprecision(numDecimals) << x;
 	return ss.str();
 }
-
-
-string roundDoubleToString(double argument, int numDecimals){
-	string strOfArgument = to_string(argument);
-	int dotOccurence = strOfArgument.find(".");
-	if(dotOccurence == string::npos)
-		return strOfArgument;
-	else
-		return strOfArgument.substr(0, dotOccurence+3);
-}	 

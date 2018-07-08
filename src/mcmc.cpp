@@ -44,7 +44,7 @@ double burnInPhase = 0.25;    // first quarter of steps are burn in phase
 double fracLoop_w_Equals_1 = 0.00;
 
 /* This runs the MCMC for learning the tree and beta, or only the tree with a fixed beta, it samples from the posterior and/or records the optimal trees/beta */
-std::string runMCMCbeta(vector<struct treeBeta>& bestTrees, double* errorRates, int noOfReps, int noOfLoops, double gamma, vector<double> moveProbs, int n, int m, int** dataMatrix, char scoreType, int* trueParentVec, int step, bool sample, double chi, double priorSd, bool useTreeList, char treeType, Mutation* bulkMutations, double w, string outFilenamePrefix, double* optimal_x, double* optimal_y, int* numCellsMutPresent, double bestIndependentSCScore){
+std::string runMCMCbeta(vector<struct treeBeta>& bestTrees, double* errorRates, int noOfReps, int noOfLoops, double gamma, vector<double> moveProbs, int n, int m, int** dataMatrix, char scoreType, int* trueParentVec, int step, bool sample, double chi, double priorSd, bool useTreeList, char treeType, Mutation* bulkMutations, double w, string outFilenamePrefix, int* numCellsMutPresent){
 
 	cout << "numOfReps\t"  << noOfReps  << endl;
 	cout << "numOfLoops\t" << noOfLoops << endl;
@@ -71,13 +71,9 @@ std::string runMCMCbeta(vector<struct treeBeta>& bestTrees, double* errorRates, 
 	double  bestAlpha = errorRates[0];
 	stringstream sampleOutput;
 
-	double SCScoreScalingCoeff   = getSCScoreScalingCoeff(dataMatrix, m, n, bestAlpha, bestBeta);
-	cout << "SCScoreScalingCoeff " << SCScoreScalingCoeff << endl;
-	double bulkScoreScalingCoeff = getBulkScoreScalingCoeff(bulkMutations, n);
-	cout << "bulkScoreScalingCeoff " << bulkScoreScalingCoeff << endl;
-	CombinedScoresStruct optimalBulkScore     = CombinedScoresStruct(n, m, dataMatrix, bulkMutations, 0.0, bestAlpha, bestBeta, bestIndependentSCScore);
-	CombinedScoresStruct optimalSCScore       = CombinedScoresStruct(n, m, dataMatrix, bulkMutations, 1.0, bestAlpha, bestBeta, bestIndependentSCScore);
-	CombinedScoresStruct optimalCombinedScore = CombinedScoresStruct(n, m, dataMatrix, bulkMutations, w, bestAlpha, bestBeta, bestIndependentSCScore); 
+	CombinedScoresStruct optimalBulkScore     = CombinedScoresStruct(n, m, 0.0);
+	CombinedScoresStruct optimalSCScore       = CombinedScoresStruct(n, m, 1.0);
+	CombinedScoresStruct optimalCombinedScore = CombinedScoresStruct(n, m, w); 
 		
 	for(int r=0; r<noOfReps; r++)   // repeat the MCMC, start over with random tree each time, only best score and list of best trees is kept between repetitions
 	{
@@ -106,7 +102,7 @@ std::string runMCMCbeta(vector<struct treeBeta>& bestTrees, double* errorRates, 
 		if(treeType=='m')
 		{ 
 			currTreeLogScore = scoreTreeAccurate(n, m, currLogScores, dataMatrix, scoreType, currTreeParentVec);
-			currTreeBulkScore = bulkScoreTree(currTreeAncMatrix, bulkMutations, n, optimal_x, optimal_y, numCellsMutPresent, w);	
+			currTreeBulkScore = bulkScoreTree(currTreeAncMatrix, bulkMutations, n, numCellsMutPresent, w);	
 		
 			optimalSCScore.updateScore(r, -1, currTreeLogScore, currTreeBulkScore, currTreeAncMatrix,  SCORES_SummaryFile);
 			optimalBulkScore.updateScore(r, -1, currTreeLogScore, currTreeBulkScore, currTreeAncMatrix, SCORES_SummaryFile);
@@ -120,7 +116,7 @@ std::string runMCMCbeta(vector<struct treeBeta>& bestTrees, double* errorRates, 
 		double currBetaLogScore = (moveProbs[0]==0) ? 0.0 : logBetaPDF(currBeta, bpriora, bpriorb);                     // zero if beta is fixed
 		double currScore = currTreeLogScore + currBetaLogScore;                                                         // combined score of current tree and current beta
 	
-		currTreeCombinedScore = calcCombinedSCBulkScore(currTreeLogScore, currTreeBulkScore, bestIndependentSCScore, SCScoreScalingCoeff, bulkScoreScalingCoeff, topologySearch_w);
+		currTreeCombinedScore = calcCombinedSCBulkScore(currTreeLogScore, currTreeBulkScore, w);
 		
 		int switch_w_It = int(fracLoop_w_Equals_1 * noOfLoops); // defines index of iteration where w = 1 is replaced with actual w
 	
@@ -129,7 +125,7 @@ std::string runMCMCbeta(vector<struct treeBeta>& bestTrees, double* errorRates, 
 			if(it == switch_w_It)
 			{
 				topologySearch_w = w;
-				currTreeCombinedScore = calcCombinedSCBulkScore(currTreeLogScore, currTreeBulkScore, bestIndependentSCScore,  SCScoreScalingCoeff, bulkScoreScalingCoeff, topologySearch_w);
+				currTreeCombinedScore = calcCombinedSCBulkScore(currTreeLogScore, currTreeBulkScore, w);
 			}
 	       		// run the iterations of the MCMC
 			int reportWhenItDivisibleBy = noOfLoops/10;
@@ -187,7 +183,7 @@ std::string runMCMCbeta(vector<struct treeBeta>& bestTrees, double* errorRates, 
 					propTreeParVec    = proposeNewTree(moveProbs, n, currTreeAncMatrix, currTreeParentVec, nbhcorrection);  // propose new tree
 					propTreeAncMatrix = parentVector2ancMatrix(propTreeParVec, parentVectorSize);
 					propTreeLogScore  = scoreTreeAccurate(n, m, currLogScores, dataMatrix, scoreType, propTreeParVec);
-					propTreeBulkScore = bulkScoreTree(propTreeAncMatrix, bulkMutations, n, optimal_x, optimal_y, numCellsMutPresent, w);
+					propTreeBulkScore = bulkScoreTree(propTreeAncMatrix, bulkMutations, n, numCellsMutPresent, w);
 			
 					optimalSCScore.updateScore(r, it, propTreeLogScore, propTreeBulkScore, propTreeAncMatrix, SCORES_SummaryFile);
 					optimalBulkScore.updateScore(r, it, propTreeLogScore, propTreeBulkScore, propTreeAncMatrix, SCORES_SummaryFile);
@@ -200,7 +196,7 @@ std::string runMCMCbeta(vector<struct treeBeta>& bestTrees, double* errorRates, 
 					propTreeLogScore = getBinTreeScore(dataMatrix, n, m, currLogScores, propTreeParVec);
 				}
 			
-				propTreeCombinedScore = calcCombinedSCBulkScore(propTreeLogScore, propTreeBulkScore, bestIndependentSCScore, SCScoreScalingCoeff, bulkScoreScalingCoeff, topologySearch_w);
+				propTreeCombinedScore = calcCombinedSCBulkScore(propTreeLogScore, propTreeBulkScore, w);
         			//if (sample_0_1() < nbhcorrection*exp((propTreeLogScore-currTreeLogScore)*gamma)){                    // the proposed tree is accepted
 				double randomNumber_0_1 = sample_0_1();
 				if (((propTreeCombinedScore-currTreeCombinedScore) > 20) || (sample_0_1() < nbhcorrection*exp((propTreeCombinedScore - currTreeCombinedScore)*gamma)))
@@ -270,7 +266,6 @@ std::string runMCMCbeta(vector<struct treeBeta>& bestTrees, double* errorRates, 
 	}
 
 	optimalCombinedScore.printSummaryOfScores();
-	writeOptimalVAFToFile(n, bulkMutations, optimal_x, optimal_y, outFilenamePrefix);
 	writeOptimalMatricesToFile(n, optimalCombinedScore, optimalSCScore, optimalBulkScore, outFilenamePrefix);
 	SCORES_SummaryFile.close();
 
@@ -299,6 +294,24 @@ double proposeNewBeta(double currBeta, double jumpSd){
 	}
 
 	return propBeta;
+}
+
+
+double proposeNewAlpha(double currAlpha, double jumpSd){
+     double sampledValue = sampleNormal(0, jumpSd);
+     double propAlpha = currAlpha;
+     if(currAlpha<jumpSd){
+       propAlpha = currAlpha*exp(sampledValue) ;
+     } else {
+       propAlpha = currAlpha+sampledValue ; //rnorm(1,0,jumpsd)
+     }
+     if(propAlpha < 0){
+         propAlpha = abs(propAlpha);
+     }
+     if(propAlpha > 1){
+         propAlpha = propAlpha - 2*(propAlpha-1);
+     }
+     return propAlpha;
 }
 
 
