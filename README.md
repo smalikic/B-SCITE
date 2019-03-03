@@ -4,7 +4,7 @@
 
 
 
-**B-SCITE** is a software package to compute trees of tumor evolution by integrative use of single-cell and bulk sequencing data. Full details about the use of the software will be added in the following days.
+**B-SCITE** is a software package to compute trees of tumor evolution by integrative use of single-cell and bulk sequencing data. 
 
 ## Software requirements and installation
 
@@ -16,7 +16,7 @@ In makefile, located inside folder src, Variable CC encoding path to C++ compile
 ## Input data
 -------------
 
-Input to B-SCITE consists of single-cell matrix, which is ternary matrix D of dimension nxm, where n denotes number of mutations and m denotes number of single cells obtained in sequencing experiment, and bulk sequencing derived matrix containing details about read counts for each of n mutations. Entries of single cell matrix are 0,1 and 3, coding respectively for absence, presence or missing value for mutation calls. Folder testExample contains an example input of bulk file (bulkFile-n_50.txt) and SC matrix (SCFile-n_50-m_100.txt). i-th row of SC file and (i+1)-th row of bulk file must correspond to the same mutation. 
+Input to B-SCITE consists of single-cell matrix, which is ternary matrix D of dimension nxm, where n denotes number of mutations and m denotes number of single cells obtained in sequencing experiment, and bulk sequencing derived matrix containing details about read counts for each of n mutations. Entries of single cell matrix are 0,1 and 3, coding respectively for absence, presence or missing value for mutation calls. Folder testExample contains an example input of bulk file (exampleInput.bulk) and SC matrix (exampleInput.SC). i-th row of SC file and (i+1)-th row of bulk file must correspond to the same mutation. 
 
 ## Running B-SCITE
 
