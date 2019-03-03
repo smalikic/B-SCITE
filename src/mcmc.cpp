@@ -37,18 +37,17 @@ using namespace std;
 /* Run the MCMC to find the best scoring trees, returns best score, inserts all best trees to bestTrees */
 /* noOfReps = how often to repeat the MCMC */
 /* noOfLoops = how long to run the chain */
-/* gamma = scaling factor for the scores to speed up convergence */
+/* gammaParam = scaling factor for the scores to speed up convergence */
 
 unsigned int optCount = 0;    // number of steps spent in optimal tree after burn-in phase
 double burnInPhase = 0.25;    // first quarter of steps are burn in phase
 double fracLoop_w_Equals_1 = 0.00;
 
 /* This runs the MCMC for learning the tree and beta, or only the tree with a fixed beta, it samples from the posterior and/or records the optimal trees/beta */
-std::string runMCMCbeta(vector<struct treeBeta>& bestTrees, double* errorRates, int noOfReps, int noOfLoops, double gamma, vector<double> moveProbs, int n, int m, int** dataMatrix, char scoreType, int* trueParentVec, int step, bool sample, double chi, double priorSd, bool useTreeList, char treeType, Mutation* bulkMutations, double w, string outFilenamePrefix, int* numCellsMutPresent){
+std::string runMCMCbeta(vector<struct treeBeta>& bestTrees, double* errorRates, int noOfReps, int noOfLoops, double gammaParam, vector<double> moveProbs, int n, int m, int** dataMatrix, char scoreType, int* trueParentVec, int step, bool sample, double chi, double priorSd, bool useTreeList, char treeType, Mutation* bulkMutations, double w, string outFilenamePrefix){
 
 	cout << "numOfReps\t"  << noOfReps  << endl;
 	cout << "numOfLoops\t" << noOfLoops << endl;
-	double bulkVariance = getBulkVariance(bulkMutations, n);
 	ofstream SCORES_SummaryFile;
 	SCORES_SummaryFile.open((outFilenamePrefix + ".scores").c_str(), ios::out);
 	SCORES_SummaryFile << "Rep\tIt\tScoreType\tScoreValue\tSCContribution\tbulkContribution\trawSCScore\trawBulkScore\tw" << endl;
@@ -102,7 +101,7 @@ std::string runMCMCbeta(vector<struct treeBeta>& bestTrees, double* errorRates, 
 		if(treeType=='m')
 		{ 
 			currTreeLogScore = scoreTreeAccurate(n, m, currLogScores, dataMatrix, scoreType, currTreeParentVec);
-			currTreeBulkScore = bulkScoreTree(currTreeAncMatrix, bulkMutations, n, numCellsMutPresent, w);	
+			currTreeBulkScore = bulkScoreTree(currTreeAncMatrix, bulkMutations, n, w);	
 		
 			optimalSCScore.updateScore(r, -1, currTreeLogScore, currTreeBulkScore, currTreeAncMatrix,  SCORES_SummaryFile);
 			optimalBulkScore.updateScore(r, -1, currTreeLogScore, currTreeBulkScore, currTreeAncMatrix, SCORES_SummaryFile);
@@ -153,7 +152,7 @@ std::string runMCMCbeta(vector<struct treeBeta>& bestTrees, double* errorRates, 
 					 propTreeLogScore = getBinTreeScore(dataMatrix, n, m, propLogScores, currTreeParentVec);
 				}
 			
-        			if (sample_0_1() < exp((propTreeLogScore+propBetaLogScore-currTreeLogScore-currBetaLogScore)*gamma))
+        			if (sample_0_1() < exp((propTreeLogScore+propBetaLogScore-currTreeLogScore-currBetaLogScore)*gammaParam))
 				{               // the proposed move is accepted
         				moveAccepted = true;
         				free_doubleMatrix(currLogScores);
@@ -183,7 +182,7 @@ std::string runMCMCbeta(vector<struct treeBeta>& bestTrees, double* errorRates, 
 					propTreeParVec    = proposeNewTree(moveProbs, n, currTreeAncMatrix, currTreeParentVec, nbhcorrection);  // propose new tree
 					propTreeAncMatrix = parentVector2ancMatrix(propTreeParVec, parentVectorSize);
 					propTreeLogScore  = scoreTreeAccurate(n, m, currLogScores, dataMatrix, scoreType, propTreeParVec);
-					propTreeBulkScore = bulkScoreTree(propTreeAncMatrix, bulkMutations, n, numCellsMutPresent, w);
+					propTreeBulkScore = bulkScoreTree(propTreeAncMatrix, bulkMutations, n, w);
 			
 					optimalSCScore.updateScore(r, it, propTreeLogScore, propTreeBulkScore, propTreeAncMatrix, SCORES_SummaryFile);
 					optimalBulkScore.updateScore(r, it, propTreeLogScore, propTreeBulkScore, propTreeAncMatrix, SCORES_SummaryFile);
@@ -197,9 +196,9 @@ std::string runMCMCbeta(vector<struct treeBeta>& bestTrees, double* errorRates, 
 				}
 			
 				propTreeCombinedScore = calcCombinedSCBulkScore(propTreeLogScore, propTreeBulkScore, w);
-        			//if (sample_0_1() < nbhcorrection*exp((propTreeLogScore-currTreeLogScore)*gamma)){                    // the proposed tree is accepted
+        			//if (sample_0_1() < nbhcorrection*exp((propTreeLogScore-currTreeLogScore)*gammaParam)){                    // the proposed tree is accepted
 				double randomNumber_0_1 = sample_0_1();
-				if (((propTreeCombinedScore-currTreeCombinedScore) > 20) || (sample_0_1() < nbhcorrection*exp((propTreeCombinedScore - currTreeCombinedScore)*gamma)))
+				if (((propTreeCombinedScore-currTreeCombinedScore) > 20) || (sample_0_1() < nbhcorrection*exp((propTreeCombinedScore - currTreeCombinedScore)*gammaParam)))
 				{
 				     	moveAccepted = true;
         				free_boolMatrix(currTreeAncMatrix);                                            

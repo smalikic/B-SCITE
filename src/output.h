@@ -4,6 +4,7 @@
  *  Created on: Oct 12, 2015
  *      Author: jahnka
  */
+#include "CombinedScoresStruct.h"
 
 #ifndef OUTPUT_H_
 #define OUTPUT_H_
@@ -24,5 +25,5 @@ void printParentVectors(std::vector<bool**> optimalTrees, int n, int m, double**
 void printGraphVizFile(int* parents, int n);
 void printSampleTrees(std::vector<int*> list, int n, std::string fileName);
 void printScoreKimSimonTree(int n, int m, double** logScores, int** dataMatrix, char scoreType);
-
+void writeOptimalMatricesToFile(int n, CombinedScoresStruct& optimalCombinedScore, CombinedScoresStruct& optimalSCScore, CombinedScoresStruct& optimalBulkScore, string outFilenamePrefix);
 #endif /* OUTPUT_H_ */

@@ -15,7 +15,7 @@
 #include "output.h"
 #include "scoreTree.h"
 #include "matrices.h"
-
+#include "CombinedScoresStruct.h"
 using namespace std;
 
 /* Score contribution by a specific mutation when placed at the root, that means all samples should have it */
@@ -340,3 +340,55 @@ void printScoreKimSimonTree(int n, int m, double** logScores, int** dataMatrix, 
 }
 
 
+void writeOptimalMatricesToFile(int n, CombinedScoresStruct& optimalCombinedScore, CombinedScoresStruct& optimalSCScore, CombinedScoresStruct& optimalBulkScore, string outFilenamePrefix){
+	int parentVectorSize = n;
+	ofstream MATRICES_SummaryFile;
+	MATRICES_SummaryFile.open((outFilenamePrefix + "." + "matrices").c_str(), ios::out);
+	MATRICES_SummaryFile << "NUM_MUTATIONS\t" << n << endl;
+
+	MATRICES_SummaryFile << "ANCESTRY_MATRIX_OPTIMAL_COMBINED_SCORE" << endl;
+	MATRICES_SummaryFile << ancMatrixToString(optimalCombinedScore.bestAncMatrix, parentVectorSize);
+	MATRICES_SummaryFile << "ANCESTRY_MATRIX_SECOND_BEST_COMBINED_SCORE" << endl;
+	MATRICES_SummaryFile << ancMatrixToString(optimalCombinedScore.secondBestAncMatrix, parentVectorSize);
+
+	MATRICES_SummaryFile << "PARENT_VECTOR_OPTIMAL_COMBINED_SCORE\t";
+	int* parVecOptCombScoreTree = ancMatrixToParVector(optimalCombinedScore.bestAncMatrix, parentVectorSize);
+	MATRICES_SummaryFile << parVectorToString(parVecOptCombScoreTree, parentVectorSize);
+	MATRICES_SummaryFile << "PARENT_VECTOR_SECOND_BEST_COMBINED_SCORE\t";
+	int* parVecSecondBestCombScoreTree = ancMatrixToParVector(optimalCombinedScore.secondBestAncMatrix, parentVectorSize);
+	MATRICES_SummaryFile << parVectorToString(parVecSecondBestCombScoreTree, parentVectorSize);
+
+	delete [] parVecOptCombScoreTree;
+	delete [] parVecSecondBestCombScoreTree;
+
+
+	MATRICES_SummaryFile << "ANCESTRY_MATRIX_OPTIMAL_SC_SCORE" << endl;
+	MATRICES_SummaryFile << ancMatrixToString(optimalSCScore.bestAncMatrix, parentVectorSize);
+	MATRICES_SummaryFile << "ANCESTRY_MATRIX_SECOND_BEST_SC_SCORE" << endl;
+	MATRICES_SummaryFile << ancMatrixToString(optimalSCScore.secondBestAncMatrix, parentVectorSize);
+
+	MATRICES_SummaryFile << "PARENT_VECTOR_OPTIMAL_SC_SCORE\t";
+	int* parVecOptSCScoreTree = ancMatrixToParVector(optimalSCScore.bestAncMatrix, parentVectorSize);
+	MATRICES_SummaryFile << parVectorToString(parVecOptSCScoreTree, parentVectorSize);
+	MATRICES_SummaryFile << "PARENT_VECTOR_SECOND_BEST_SC_SCORE\t";
+	int* parVecSecondBestSCScoreTree = ancMatrixToParVector(optimalSCScore.secondBestAncMatrix, parentVectorSize);
+	MATRICES_SummaryFile << parVectorToString(parVecSecondBestSCScoreTree, parentVectorSize);
+
+	delete [] parVecOptSCScoreTree;
+	delete [] parVecSecondBestSCScoreTree;
+
+	MATRICES_SummaryFile << "ANCESTRY_MATRIX_OPTIMAL_BULK_SCORE" << endl;
+	MATRICES_SummaryFile << ancMatrixToString(optimalBulkScore.bestAncMatrix, parentVectorSize);
+	MATRICES_SummaryFile << "ANCESTRY_MATRIX_SECOND_BEST_BULK_SCORE" << endl;
+	MATRICES_SummaryFile << ancMatrixToString(optimalBulkScore.secondBestAncMatrix, parentVectorSize);
+	MATRICES_SummaryFile << "PARENT_VECTOR_OPTIMAL_BULK_SCORE\t";
+	int* parVecOptBulkScoreTree = ancMatrixToParVector(optimalBulkScore.bestAncMatrix, parentVectorSize);
+	MATRICES_SummaryFile << parVectorToString(parVecOptBulkScoreTree, parentVectorSize);
+	MATRICES_SummaryFile << "PARENT_VECTOR_SECOND_BEST_BULK_SCORE\t";
+	int* parVecSecondBestBulkScoreTree = ancMatrixToParVector(optimalBulkScore.secondBestAncMatrix, parentVectorSize);
+	MATRICES_SummaryFile << parVectorToString(parVecSecondBestBulkScoreTree, parentVectorSize);
+	delete [] parVecOptBulkScoreTree;
+	delete [] parVecSecondBestBulkScoreTree;
+
+	MATRICES_SummaryFile.close();
+}

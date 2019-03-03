@@ -14,7 +14,7 @@
 #ifndef MCMC_H_
 #define MCMC_H_
 
-string runMCMCbeta(vector<struct treeBeta>& bestTrees, double* errorRates, int noOfReps, int noOfLoops, double gamma, vector<double> moveProbs, int n, int m, int** dataMatrix, char scoreType, int* trueParentVec, int step, bool sample, double chi, double priorSd, bool useTreeList, char treeType, Mutation* muts, double w, string outFilenamePrefix, int* numCellsMutPresent, double bestIndependentSCScore);
+string runMCMCbeta(vector<struct treeBeta>& bestTrees, double* errorRates, int noOfReps, int noOfLoops, double gammaParam, vector<double> moveProbs, int n, int m, int** dataMatrix, char scoreType, int* trueParentVec, int step, bool sample, double chi, double priorSd, bool useTreeList, char treeType, Mutation* muts, double w, string outFilenamePrefix, double bestIndependentSCScore);
 double logBetaPDF(double x, double bpriora, double bpriorb);
 double proposeNewBeta(double currBeta, double jumpSd);
 double proposeNewAlpha(double currAlpha, double jumpSd);

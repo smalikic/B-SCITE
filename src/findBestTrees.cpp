@@ -28,6 +28,7 @@
 using namespace std;
 
 int** getDataMatrix(int n, int m, string fileName);
+Mutation* readMutationsFromBulkFile(string pathBulkFile, int numMutations); // numMutations = n
 int*  getNumCellsMutPresentArray(int n, int m, string fileName);
 double* getErrorRatesArray(double fd, double ad1, double ad2, double cc);
 int readParameters(int argc, char* argv[]);
@@ -39,7 +40,7 @@ vector<double> setMoveProbs();
 int* getParentVectorFromGVfile(string fileName, int n);
 int getMinDist(int* trueVector, std::vector<bool**> optimalTrees, int n);
 void printGeneFrequencies(int** dataMatrix, int n, int m, vector<string> geneNames);
-
+string getFullCommand(int argc, char* argv[]);
 
 double defaultMoveProbs[] = {0.55, 0.4, 0.05};     // moves: change beta / prune&re-attach / swap node labels / swap subtrees
 double defaultMoveProbsBin[] = {0.4, 0.6};    // moves: change beta / prune&re-attach / swap leaf labels
@@ -57,7 +58,7 @@ int m;                // number of samples
 char scoreType = 'm';
 int rep;            // number of repetitions of the MCMC
 int loops;          // number of loops within a MCMC
-double gamma = 1;
+double gammaParam = 1;
 double fd;          // rate of false discoveries (false positives 0->1)
 double ad1;          // rate of allelic dropout (false negatives 1->0)
 double doubletProb;
@@ -77,9 +78,10 @@ bool useTreeList = true;
 char treeType = 'm';        // the default tree is a mutation tree; other option is 't' for (transposed case), where we have a binary leaf-labeled tree
 int maxTreeListSize = -1;  // defines the maximum size of the list of optimal trees, default -1 means no restriction
 double *optimalAlpha, *optimalBeta;
-
+double doublet_alphaBetaMoveRatio = -1; // set default value to 0.50 or 1.00 later (this is percentage of alpha, 0.00 means no alpha learning)
 int main(int argc, char* argv[])
 {
+	cout << getFullCommand(argc, argv) << endl;
 
 	/****************   begin timing  *********************/
 			clock_t begin=clock();
@@ -94,7 +96,7 @@ int main(int argc, char* argv[])
 	readParameters(argc, argv);
 	int** dataMatrix = getDataMatrix(n, m, fileName); // see description of getDataMatrix below - before source code of the function Output is of dimensions m x n
 	int* numCellsMutPresent = getNumCellsMutPresentArray(n, m, fileName);
-	Mutation* bulkMutations = readBulkInput(bulkFileLocation);
+	Mutation* bulkMutations = readMutationsFromBulkFile(bulkFileLocation, n);
 	vector<double> moveProbs = setMoveProbs();
 	double* errorRates = getErrorRatesArray(fd, ad1, ad2, cc);
 
@@ -108,12 +110,12 @@ int main(int argc, char* argv[])
 	/**  Find best scoring trees by MCMC  **/
 	optimalAlpha = new double[n];
 	optimalBeta  = new double[n];
-//	sampleOutput = runMCMCbeta(optimalTrees, errorRates, rep, loops, gamma, moveProbs, n, m, dataMatrix, scoreType, trueParentVec, sampleStep, sample, chi, priorSd, useTreeList, treeType, bulkMutations, w, outFilenamePrefix, optimalAlpha, optimalBeta);
+//	sampleOutput = runMCMCbeta(optimalTrees, errorRates, rep, loops, gammaParam, moveProbs, n, m, dataMatrix, scoreType, trueParentVec, sampleStep, sample, chi, priorSd, useTreeList, treeType, bulkMutations, w, outFilenamePrefix, optimalAlpha, optimalBeta);
 
 	//doublet Prob, doubleMut, priorSd_alpha, priorSd_beta
 	double priorSd_alpha = 0.01* priorSd;
-	double priorSd_beta =  priorSd;
-	sampleOutput = runMCMCbetaDoublet(optimalTrees, errorRates, rep, loops, gamma, moveProbs, n, m, dataMatrix, scoreType, trueParentVec, sampleStep, sample, chi, priorSd_alpha, priorSd_beta, useTreeList, treeType, doubletProb, doubleMut, bulkMutations, w, outFilenamePrefix, numCellsMutPresent);
+	double priorSd_beta  = priorSd;
+	sampleOutput = runMCMCbetaDoublet(optimalTrees, errorRates, rep, loops, gammaParam, moveProbs, n, m, dataMatrix, scoreType, trueParentVec, sampleStep, sample, chi, priorSd_beta, priorSd_alpha, doublet_alphaBetaMoveRatio, useTreeList, treeType, doubletProb, doubleMut, bulkMutations, w, outFilenamePrefix);
 	/***  output results  ***/
 
 	string prefix = getOutputFilePrefix(fileName, outFilenamePrefix);
@@ -131,6 +133,8 @@ int main(int argc, char* argv[])
 	if(treeType=='t'){parentVectorSize = (2*m)-2;}                     // transposed case: binary tree, m leafs and m-1 inner nodes, root has no parent
 	int outputSize = optimalTrees.size();
 	if(maxTreeListSize >=0) {outputSize = maxTreeListSize;}            // there is a limit on the number of trees to output
+
+/*
 	for(int i=0; i<outputSize; i++){
 
 		int* parentVector = optimalTrees.at(i).tree;
@@ -163,6 +167,7 @@ int main(int argc, char* argv[])
 
 	}
 
+*/
 	delete [] logScores[0];
 	delete [] logScores;
 	delete [] errorRates;
@@ -200,8 +205,6 @@ void printGeneFrequencies(int** dataMatrix, int n, int m, vector<string> geneNam
 		cout << freq << "\t" << geneNames.at(i) << "\n";
 	}
 }
-
-
 
 int* getParentVectorFromGVfile(string fileName, int n){
 	int* parentVector = new int[n];
@@ -283,7 +286,7 @@ int readParameters(int argc, char* argv[]){
 		} else if(strcmp(argv[i], "-l")==0) {
 			if (i + 1 < argc) { loops = atoi(argv[++i]);}
 		} else if(strcmp(argv[i], "-g")==0) {
-			if (i + 1 < argc) { gamma = atof(argv[++i]);}
+			if (i + 1 < argc) { gammaParam = atof(argv[++i]);}
 		} else if(strcmp(argv[i], "-fd")==0) {
 			if (i + 1 < argc) { fd = atof(argv[++i]);}
 		} else if(strcmp(argv[i],"-ad")==0) {
@@ -304,7 +307,9 @@ int readParameters(int argc, char* argv[]){
 		} else if(strcmp(argv[i],"-x")==0) {
 							if (i + 1 < argc) { chi = atof(argv[++i]);}
 		} else if(strcmp(argv[i],"-sd")==0) {
-									if (i + 1 < argc) { priorSd = atof(argv[++i]);}
+							if (i + 1 < argc) { priorSd = atof(argv[++i]);}
+		} else if(strcmp(argv[i],"-abr")==0) {
+							if (i + 1 < argc) { doublet_alphaBetaMoveRatio = atof(argv[++i]);}
 		} else if (strcmp(argv[i], "-a")==0) {
 			attachSamples = true;
 		} else if(strcmp(argv[i], "-p")==0) {
@@ -423,6 +428,54 @@ int** getDataMatrix(int n, int m, string fileName){
     return transposedMatrix;
 }
 
+Mutation* readMutationsFromBulkFile(string pathBulkFile, int n){
+	Mutation* bulkMutations = new Mutation[n];
+	assertFileExists(pathBulkFile);
+	ifstream bulkFile(pathBulkFile);
+	string bulkFileHeader;
+	getline(bulkFile, bulkFileHeader);
+	string line;
+	int currentMutationIndex = 0;
+	while(getline(bulkFile, line)){
+		/* read Entries of the lines (prepare value of each of the fields of Mutation object one by one)
+		    example of input file line with three bulk samples (see line below):
+		    mutID chr1 3242234 456;235;223; 1004;1315;1284; SomeINFO
+		*/
+		vector<string> lineColumns = splitString(line, "\t ");
+		string ID = lineColumns[0];
+		string chromosome = lineColumns[1];
+		int position = atoi(lineColumns[2].c_str());
+		vector<string> mutReadsVectorString = splitString(lineColumns[3], ";");
+		vector<string> refReadsVectorString  = splitString(lineColumns[4], ";");
+		if(mutReadsVectorString.size() != refReadsVectorString.size()){
+			cout << "ERROR in file " << pathBulkFile << ". The number of mut and ref reads must be same. Line content: " << line << endl;
+			assert(false);}
+		int numSamples = mutReadsVectorString.size();
+		vector<int> mutReads,refReads;
+		for(int sampleIndex=0; sampleIndex<numSamples; sampleIndex++){
+			mutReads.push_back(atoi(mutReadsVectorString[sampleIndex].c_str()));
+			refReads.push_back(atoi(refReadsVectorString[sampleIndex].c_str()));
+		}
+		string INFO = lineColumns[5];
+		bulkMutations[currentMutationIndex] = Mutation(ID, chromosome, position, mutReads, refReads, INFO);
+		currentMutationIndex++;
+	}
+	// Do some validation of the input data
+	int numMutations = currentMutationIndex;
+	if(currentMutationIndex == 0){
+		cout << "Bulk file " << pathBulkFile << " does not contain any mutation";
+		assert(numMutations>0);
+	}
+	int numSamples = bulkMutations[0].getNumSamples();
+	for(int i=1; i<numMutations; i++){
+		if(bulkMutations[i].getNumSamples() != numSamples){
+			cout << "Number of bulk samples must be the same for all mutations. Place zero for read count if mutation missing. File " << pathBulkFile << endl;
+			assert(numSamples == bulkMutations[i].getNumSamples());
+		}
+	}
+	return bulkMutations;
+}
+
 
 
 int* getNumCellsMutPresentArray(int n, int m, string fileName){
@@ -501,4 +554,18 @@ double* getErrorRatesArray(double fd, double ad1, double ad2, double cc){
 	array[3] = cc;
 	return array;
 }
+
+
+/*
+	This function prints the full command used for running B-SCITE
+*/
+string getFullCommand(int argc, char* argv[]){
+	string fullCommand = "FULL_COMMAND:";
+	for(int i=0; i<argc; i++){
+		fullCommand += "\t";
+		fullCommand += argv[i];
+	}
+	return fullCommand;
+}
+
 

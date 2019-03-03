@@ -17,6 +17,7 @@
 #include <fstream>
 #include <sstream>
 #include <time.h>
+#include <assert.h>
 #include "matrices.h"
 #include "treelist.h"
 #include "trees.h"
@@ -93,8 +94,9 @@ MCMC_theta::MCMC_theta (double newAlpha, double newBeta, double newAlphaLogScore
 //#define UNIFORM_BETA_DISTR_alpha      true  // uses a uniform beta distribution for the prior of alpha, sets bpriora_alpha=1 and bpriorb_alpha=1
 
 
-double doublet_totalzeros = 100000000;           //  the number of sequenced sites observed to be mutated in no sample
-double doublet_alphaBetaMoveRatio = 0.5;              // percentage of beta moves
+//double doublet_totalzeros = 100000000;           //  the number of sequenced sites observed to be mutated in no sample
+double doublet_totalzeros = 0;
+//double doublet_alphaBetaMoveRatio = 0.50;  // ratio of alpha/beta moves. 0 if no alpha learning (from Sep 28 2018 it's parameter in runMCMCbetaDoublet
 bool   fixedDoubletProb = false;
 double bestAvgSingletScoreSum = -DBL_MAX;
 double bestAvgRelevantDoubletScoreSum = -DBL_MAX;
@@ -245,7 +247,7 @@ double scoreTreeFastWithDoublets(int*parent, int n, int m, double** logScores, i
 
 
 
-std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* errorRates, int noOfReps, int noOfLoops, double gamma, vector<double> moveProbs, int n, int m, int** dataMatrix, char scoreType, int* trueParentVec, int step, bool sample, double chi, double priorSd_beta, double priorSd_alpha, bool useTreeList, char treeType, double doubletProb, int doubleMut, Mutation* bulkMutations, double w, string outFilenamePrefix, int* numCellsMutPresent){
+std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* errorRates, int noOfReps, int noOfLoops, double gamma, vector<double> moveProbs, int n, int m, int** dataMatrix, char scoreType, int* trueParentVec, int step, bool sample, double chi, double priorSd_beta, double priorSd_alpha, double doublet_alphaBetaMoveRatio, bool useTreeList, char treeType, double doubletProb, int doubleMut, Mutation* bulkMutations, double w, string outFilenamePrefix){
 
 	cout << "numOfMutations\t" << n << endl;
 	cout << "numOfCells\t" << m << endl;
@@ -325,7 +327,7 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 		if(treeType=='m')
 		{ 
 			currTreeLogScore = scoreTreeFastWithDoublets(currTreeParentVec, n, m, currLogScores, dataMatrix, currTreeAncMatrix, currDoubletProb, propDoubletProb, propRelDoubletProb, doubleMut);
-			currTreeBulkScore = bulkScoreTree(currTreeAncMatrix, bulkMutations, n, numCellsMutPresent, w);
+			currTreeBulkScore = bulkScoreTree(currTreeAncMatrix, bulkMutations, n, w);
 			
 			optimalSCScore.updateScore(r, -1, currTreeLogScore, currTreeBulkScore, currTreeAncMatrix, SCORES_SummaryFile);
 			optimalBulkScore.updateScore(r, -1, currTreeLogScore, currTreeBulkScore, currTreeAncMatrix, SCORES_SummaryFile);
@@ -393,7 +395,18 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 				updateLogScoresAlphaBeta(propLogScores, propBeta, propAlpha);
 				double propBetaLogScore = beta.logBetaPDF(propBeta);
 				double propAlphaLogScore = alpha.logBetaPDF(propAlpha);
-				double propThetaLogScore =  m*doublet_totalzeros*log(1-propAlpha) + propBetaLogScore + propAlphaLogScore;
+				double propThetaLogScore;
+				if(doublet_alphaBetaMoveRatio == 0.5){
+					propThetaLogScore =  m*doublet_totalzeros*log(1-propAlpha) + propBetaLogScore + propAlphaLogScore;
+				}
+				else if(doublet_alphaBetaMoveRatio == 0){
+					propThetaLogScore = propBetaLogScore;
+				}
+				else{
+					cout << "ERROR in runMCMCbetaDoublet.cpp. Value of doublet_alphaBetaMoveRatio equal to ";
+					cout << doublet_alphaBetaMoveRatio << " but it should be either 0.5 or 0. (this case is not covered).";
+					assert(false); 
+				}
 				double propTreeLogScore;
 				double propTreeBulkScore = currTreeBulkScore;
 
@@ -452,7 +465,7 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 		
         				propTreeAncMatrix = parentVector2ancMatrix(propTreeParVec, parentVectorSize);
         				propTreeLogScore  = scoreTreeFastWithDoublets(propTreeParVec, n, m, currLogScores, dataMatrix, propTreeAncMatrix, currDoubletProb, propDoubletProb, propRelDoubletProb, doubleMut);
-					propTreeBulkScore = bulkScoreTree(propTreeAncMatrix, bulkMutations, n, numCellsMutPresent, w);
+					propTreeBulkScore = bulkScoreTree(propTreeAncMatrix, bulkMutations, n, w);
 					propTreeCombinedScore = calcCombinedSCBulkScore(propTreeLogScore, propTreeBulkScore, w);
         				//cout << "proposed score: " << propTreeLogScore << " after tree move, before tree score: " << currTreeLogScore << "\n";
         				free_boolMatrix(propTreeAncMatrix);
@@ -558,11 +571,16 @@ std::string runMCMCbetaDoublet(vector<struct treeBeta>& bestTrees, double* error
 		cout << "best log score for (T, theta):\t" << bestScore << "\n";
 	}
 
+	SCORES_SummaryFile.close();
 	optimalCombinedScore.printSummaryOfScores();
 	writeOptimalMatricesToFile(n, optimalCombinedScore, optimalSCScore, optimalBulkScore, outFilenamePrefix);
-	SCORES_SummaryFile.close();
-	
-
+	// write to file optimal inferred VAFs for solution using SC+bulkData (but also scores for the best encountered tree using individual data types might be reported)
+//	bulkScoreTree(optimalCombinedScore.bestAncMatrix, bulkMutations, n, w, outFilenamePrefix + ".optimalCombined.inferredVAF");
+//	bulkScoreTree(optimalCombinedScore.secondBestAncMatrix, bulkMutations, n, w, outFilenamePrefix + ".secondBestCombined.inferredVAF");
+//	bulkScoreTree(optimalBulkScore.bestAncMatrix, bulkMutations, n, w, outFilenamePrefix + ".optimalBulk.inferredVAF");
+//	bulkScoreTree(optimalBulkScore.secondBestAncMatrix, bulkMutations, n, w, outFilenamePrefix + ".secondBestBulk.inferredVAF");
+//	bulkScoreTree(optimalSCScore.bestAncMatrix, bulkMutations, n, w, outFilenamePrefix + ".optimalSC.inferredVAF");
+//	bulkScoreTree(optimalSCScore.secondBestAncMatrix, bulkMutations, n , w, outFilenamePrefix + ".secondBestSC.inferredVAF");
 	return sampleOutput.str();
 }
 

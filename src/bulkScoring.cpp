@@ -11,223 +11,179 @@
 #include <float.h>
 #include <vector>
 #include "bulkScoring.h"
-#include "CombinedScoresStruct.h"
 
 const double pi= 3.1415926535897;
-const double min_x = 0.05;
 using namespace std; 
 
+// pathOptimalBulkSolutionFile is file where values of optimal x (phi in the manuscript) and optimal y are stored. Additional INFO about mutation is also stored.
+double bulkScoreTree(bool** anc_matrix,  Mutation* bulkMutations, int n, double w, string pathOptimalBulkSolutionFile){
 
-
-double getVarianceCoeffInBulkScoring(Mutation mut){
-	double halfVAF = mut.getVAF()/2;
-	double totalReads = mut.mutReads + mut.refReads;
-	if(halfVAF == 1)
-		halfVAF = 0.99;
-	if(halfVAF == 0)
-		halfVAF = 0.01;
-	if(halfVAF < 0 || halfVAF > 1){
-		cout << "ERROR in bulk mutation frequency. Half VAF equals " << halfVAF << " but was set to 0.01." << endl;
-		halfVAF = 0.01;
-	} 
-	double varianceCoefficient = totalReads/(8.0*halfVAF*(1-halfVAF));
-	
-	return varianceCoefficient;
-}
-
-
-double bulkScoreTree(bool** anc_matrix,  Mutation* mutations, int n, int* numCellsMutPresent, double w){
-	if(w==1.00)
+	if((w==1.00) && (pathOptimalBulkSolutionFile == ""))
+	{
 		return 0;
+	}
 
-	bool quadraticError = true;
-	
 	int nodeOfMut[n]; // These variables are in fact the other representation of delta's
-	for(int i=0; i<n; i++){
-		nodeOfMut[i] = i; 
-	};
+	for(int i=0; i<n; i++){nodeOfMut[i] = i;}
  
 	try
 	{
+		// Cplex environment 
 		IloEnv env;
 		IloModel model(env);
-	
-		IloFloatVarArray x = IloFloatVarArray(env, n, 0, 1);
-		//IloSemiContVarArray x = IloSemiContVarArray(env, n, 0.05, 1);
-		IloExpr sum_x_Constraint(env);
+
+		// Number of available bulk samples
+		int numSamples = bulkMutations[0].getNumSamples();
+
+		IloArray<IloFloatVarArray> x(env, n);
 		for(int i=0; i<n; i++)
 		{
-			sum_x_Constraint += x[i];
+			x[i] = IloFloatVarArray(env, numSamples, 0, 1);
 		}
-		model.add(sum_x_Constraint <= 1); /* Root is always kept for normal cells hence the purity is 1 - sum of all x */
 
-		IloExpr objective(env);
-		IloFloatVarArray absValues(env, n, 0, 1);	
+		for(int s=0; s<numSamples; s++)
+		{
+			IloExpr sum_x_Constraint(env);
+			for(int i=0; i<n; i++)
+			{
+				sum_x_Constraint += x[i][s];
+			}
+			model.add(sum_x_Constraint <= 1);
+		}
+
+
+		IloExpr objective(env);	
 		for(int i=0; i<n; i++)
 		{
-			if (numCellsMutPresent[i] == 0) continue;
-
 			int nodeOfCurrentMut = nodeOfMut[i]; // take the node to which the mutation is already assigned through single cell steps
-			
-			IloExpr errorOfCurrentMut(env);  // equals to (f_observed_in_bulk - f_observed_in_tree)^2
-			errorOfCurrentMut +=  mutations[i].getVAF();	
-			for(int j=0; j<n; j++)
-				if(anc_matrix[nodeOfCurrentMut][j])
-					errorOfCurrentMut -= x[j];
-	
-	
-			if(quadraticError)
+			for(int s=0; s<numSamples; s++)
 			{
-				objective += getVarianceCoeffInBulkScoring(mutations[i]) * errorOfCurrentMut * errorOfCurrentMut; 
-			}
-			else // !!!!! Analyze coefficient in this case
-			{
-				model.add(absValues[i] >= errorOfCurrentMut);
-				model.add(absValues[i] >= -errorOfCurrentMut);
-				objective += absValues[i];
+				IloExpr errorOfCurrentMut(env);  // equals to (f_observed_in_bulk - f_observed_in_tree)^2
+				errorOfCurrentMut +=  bulkMutations[i].getVAFinSample(s);
+				for(int j=0; j<n; j++)
+				{
+					if(anc_matrix[nodeOfCurrentMut][j])
+					{
+						errorOfCurrentMut -= x[j][s];
+					}
+				}
+				objective += bulkMutations[i].getQuadraticTermCoeffInBulkObjective(s) * errorOfCurrentMut * errorOfCurrentMut; 
 			}		
 		}
 
-		IloObjective objectiveExpression = IloMinimize(env, objective);
+		model.add(IloMaximize(env, objective));
 
-		model.add(objectiveExpression);
 
 		IloCplex cplex(model);
-		cplex.setParam(IloCplex::TiLim, 3 * 3600); //3 hours time limit
+		cplex.setParam(IloCplex::TiLim, 3 * 3600); // 3 hours time limit
 		cplex.setOut(env.getNullStream());
 		cplex.setWarning(env.getNullStream());		
 		cplex.setParam(IloCplex::EpGap, 0.002);
 		cplex.setParam(IloCplex::Threads, 8);
+
 		double startTime = cplex.getCplexTime();
+
 		cplex.solve();
+
 		double endTime = cplex.getCplexTime();
 		double cplex_seconds = endTime - startTime;
 		IloCplex::CplexStatus status = cplex.getCplexStatus();
 		
-/*
-		for(int i=0; i<n; i++)
+		if(pathOptimalBulkSolutionFile != "")
 		{
-			optimal_x[i] = cplex.getValue(x[i]);
-		}	
-		
-		for(int i=0; i<n; i++)
-		{
-			optimal_y[i]=0;
-			for(int j=0; j<n; j++)
-				if(anc_matrix[i][j])
-					optimal_y[i] += optimal_x[j];
+			double** optimal_x = allocate_doubleMatrix(n, numSamples);
+			for(int i=0; i<n; i++)
+			{	
+				for(int s=0; s<numSamples; s++)
+				{
+					optimal_x[i][s] = cplex.getValue(x[i][s]);
+				}
+			}
+
+			double** optimal_y = allocate_doubleMatrix(n, numSamples);	
+			for(int i=0; i<n; i++)
+			{
+				for(int s=0; s<numSamples; s++)
+				{
+					optimal_y[i][s] = 0;
+					for(int j=0; j<n; j++)
+					{
+						if(anc_matrix[i][j])
+						{
+							optimal_y[i][s] += optimal_x[j][s];
+						}
+					}
+				}
+			}
+
+			ofstream optimalBulkSolutionFile;
+			optimalBulkSolutionFile.open(pathOptimalBulkSolutionFile.c_str());
+			optimalBulkSolutionFile << "MUT_ID\tTRUE_VAF\tINFERRED_VAF\t|TRUE-INFERRED|_VAF" << endl;
+			for(int i=0; i<n; i++)
+			{
+				
+				optimalBulkSolutionFile << bulkMutations[i].getID();
+				optimalBulkSolutionFile << "\t";
+				for(int s=0; s<numSamples; s++)
+				{
+					if (bulkMutations[i].getTrueVAFinSample(s) == "NA")
+					{
+						 optimalBulkSolutionFile << "NA" << ";";
+					}
+					else
+					{ 
+						optimalBulkSolutionFile << doubleToString(atof(bulkMutations[i].getTrueVAFinSample(s).c_str()), 5) << ";";
+					}
+				}
+				optimalBulkSolutionFile << "\t";
+				for(int s=0; s<numSamples; s++)
+				{
+					optimalBulkSolutionFile << doubleToString(optimal_y[i][s], 5) << ";";
+				}
+				optimalBulkSolutionFile << "\t";
+				for(int s=0; s<numSamples; s++)
+				{
+					if(bulkMutations[i].getTrueVAFinSample(s) == "NA")
+					{
+						optimalBulkSolutionFile << "NA";
+					}
+					else
+					{
+						optimalBulkSolutionFile << doubleToString(abs(atof(bulkMutations[i].getTrueVAFinSample(s).c_str()) - optimal_y[i][s]), 5);
+					}
+					optimalBulkSolutionFile << ";";
+				}
+				optimalBulkSolutionFile << endl;
+			}
+			optimalBulkSolutionFile.close();
+			free_doubleMatrix(optimal_x);
+			free_doubleMatrix(optimal_y);
 		}
 
-*/
 		double objValue = cplex.getObjValue();
 		env.end();
 
-	/*
-		 //The score below is the full score that accounts the approximation of binomial distribution using normal distribution
-		double fullFinalScore = 0.0; // this score accounts for all summands (including constants) existing when using Normal approximation for Binomial 
-		fullFinalScore += n*log(1.0/sqrt(2*pi));
-		double half_VAF, variance_coefficient, totalCount;
-		for(int i=0; i<n; i++)
-		{
-			half_VAF = mutations[i].getVAF()/2;
-			totalCount = mutations[i].mutReads + mutations[i].refReads;
-			double varianceCoeff = 1/(totalCount*(half_VAF)*(1-half_VAF));
-			fullFinalScore += ((0.5) * log(varianceCoeff));
-		}
-		fullFinalScore -= objValue;
-		return fullFinalScore;
-		// if we want full Final score to be returned then return(fullFinalScore); statement should come here
-	*/
-		return -objValue;  
+	return objValue;  
 
 	} 
 
 	catch (IloAlgorithm::CannotExtractException& e) { 
 		cout << "Error in bulkScoreTree function. Problem with CPLEX.\n" << endl;
-		std::cerr << "CannoExtractException: " << e << std::endl; 
+		cerr << "CannoExtractException: " << e << std::endl; 
 		IloExtractableArray failed = e.getExtractables(); 
 		for (IloInt i = 0; i < failed.getSize(); ++i) 
-			std::cerr << "\t" << failed[i] << std::endl; 
- 
+		{
+			cerr << "\t" << failed[i] << endl; 
+		}
 	}
  
 	catch(const IloException& e){
-		cout << "Error in bulkScoreTree function. Problem with CPLEX.\n" << endl;
-		cerr << e;
+		cout << "ERROR! Cplex error in bulkScoreTree function." << endl << endl;
+		cerr << e.getMessage();
 	}
 }
 
 
-
-Mutation* readBulkInput(string bulkFileLocation)
-{
-	ifstream bulkFile(bulkFileLocation, ifstream::in);
-	if(!bulkFile.is_open()){
-		cout << "Error. Can not open bulk file " << bulkFileLocation << "\t. File probably does not exist. Exiting!!!" << endl;
-		assert(false);
-	};
-	
-
-	string line;	
-	vector<string> bulkFileLines;
-	while(getline(bulkFile, line)){
-		bulkFileLines.push_back(line);
-	};
-	bulkFile.close();
-	
-	bulkFileLines.erase(bulkFileLines.begin()); // remove header line
-	int numMutations = bulkFileLines.size();
-	Mutation* mutations = new Mutation[numMutations];
-	for(int mutIndex = 0; mutIndex < numMutations; mutIndex++){
-		vector<string> mutFields = split(bulkFileLines[mutIndex]);
-		string ID = mutFields[0];
-		string chromosome = mutFields[1];
-		int position = stoi(mutFields[2]);
-		int mutReads = stoi(mutFields[3]);
-		int refReads = stoi(mutFields[4]);
-		string INFO = mutFields[5];
-		mutations[mutIndex] = Mutation(ID, chromosome, position, mutReads, refReads, INFO);
-	 	//cout << mutIndex << "\t" << ID << "\t" << chromosome << "\t" << position << "\t" << mutReads << "\t" << refReads << "\t" << INFO << endl;	
-	}	
-		
-	return mutations;
-}
-
-
-double absFunctionLocal(double x){
-	if(x>0)
-		return x;
-	else
-		return -x;
-}
-
-
-void writeOptimalMatricesToFile(int n, CombinedScoresStruct& optimalCombinedScore, CombinedScoresStruct& optimalSCScore, CombinedScoresStruct& optimalBulkScore, string outFilenamePrefix){
-	int parentVectorSize = n;
-	ofstream MATRICES_SummaryFile;
-	MATRICES_SummaryFile.open((outFilenamePrefix + "." + "matrices").c_str(), ios::out);
-	MATRICES_SummaryFile << "NUM_MUTATIONS\t" << n << endl;
-
-	MATRICES_SummaryFile << "ANCESTRY_MATRIX_OPTIMAL_COMBINED_SCORE" << endl;
-	MATRICES_SummaryFile << ancMatrixToString(optimalCombinedScore.ancMatrix, parentVectorSize);
-	MATRICES_SummaryFile << "PARENT_VECTOR_OPTIMAL_COMBINED_SCORE\t";
-	int* parVecOptCombScoreTree = ancMatrixToParVector(optimalCombinedScore.ancMatrix, parentVectorSize);
-	MATRICES_SummaryFile << parVectorToString(parVecOptCombScoreTree, parentVectorSize);
-	delete [] parVecOptCombScoreTree;
-
-	MATRICES_SummaryFile << "ANCESTRY_MATRIX_OPTIMAL_SC_SCORE" << endl;
-	MATRICES_SummaryFile << ancMatrixToString(optimalSCScore.ancMatrix, parentVectorSize);
-	MATRICES_SummaryFile << "PARENT_VECTOR_OPTIMAL_SC_SCORE\t";
-	int* parVecOptSCScoreTree = ancMatrixToParVector(optimalSCScore.ancMatrix, parentVectorSize);
-	MATRICES_SummaryFile << parVectorToString(parVecOptSCScoreTree, parentVectorSize);
-	delete [] parVecOptSCScoreTree;
-
-	MATRICES_SummaryFile << "ANCESTRY_MATRIX_OPTIMAL_BULK_SCORE" << endl;
-	MATRICES_SummaryFile << ancMatrixToString(optimalBulkScore.ancMatrix, parentVectorSize);
-	MATRICES_SummaryFile << "PARENT_VECTOR_OPTIMAL_BULK_SCORE\t";
-	int* parVecOptBulkScoreTree = ancMatrixToParVector(optimalBulkScore.ancMatrix, parentVectorSize);
-	MATRICES_SummaryFile << parVectorToString(parVecOptBulkScoreTree, parentVectorSize);
-	delete [] parVecOptBulkScoreTree;
-
-	MATRICES_SummaryFile.close();
+double bulkScoreTree(bool** anc_matrix,  Mutation* bulkMutations, int n, double w){
+	return bulkScoreTree(anc_matrix, bulkMutations, n, w, "");
 }
