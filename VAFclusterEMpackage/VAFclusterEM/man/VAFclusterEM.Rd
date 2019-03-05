@@ -10,7 +10,7 @@ Parameter estimation and cluster assignment is performed using the EM algorithm,
 VAFclusterEM(dataVec, coverage, kclust, startseed=100, nIterations=40, verbose=FALSE)
 }
 \arguments{
-    \item{dataVec}{A vector of mutation frequencies.}
+    \item{dataVec}{A vector of mutation frequencies, or a matrix or dataframe with each row corresponding to a bulk sample.}
     \item{coverage}{Average coverage of the sequencing data}
     \item{kclust}{Number of clusters}
     \item{startseed}{Offset for the seed for the random number generator}

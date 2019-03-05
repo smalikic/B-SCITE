@@ -1,7 +1,7 @@
 Package: VAFclusterEM
 Type: Package
 Title: Performs clustering of VAF data
-Version: 0.1.0
+Version: 0.1.1
 Author: Jack Kuipers
 Maintainer: <jack.kuipers@bsse.ethz.ch>
 Description: Gaussian mixture model of VAF data with fixed variances

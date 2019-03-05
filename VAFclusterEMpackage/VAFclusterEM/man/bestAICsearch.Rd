@@ -12,7 +12,7 @@ bestAICsearch(dataVec, minK = 2, maxK, coverage, startseed = 100, nIterations = 
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-    \item{dataVec}{A vector of mutation frequencies.}
+    \item{dataVec}{A vector of mutation frequencies, or a matrix or dataframe with each row corresponding to a bulk sample.}
   \item{minK}{Minimal number of clusters}
   \item{maxK}{Maximal number of clusters}
     \item{coverage}{Average coverage of the sequencing data}

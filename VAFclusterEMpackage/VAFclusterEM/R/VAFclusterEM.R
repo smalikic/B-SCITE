@@ -101,7 +101,17 @@ sdfromcoverage <- function(freq,coverage){
 
 VAFclusterEMcore <- function(kclust, coverage, datatocluster){
 
-    mbig<-length(datatocluster)
+    multiFlag <- FALSE # if we have a single sample or not
+
+    if(is.matrix(datatocluster)||is.data.frame(datatocluster)){ # if multiple, should be a matrix
+        mbig<-ncol(datatocluster)
+        if(nrow(datatocluster)>1){ # with more than one row
+            multiFlag <- TRUE
+        }
+    } else if(is.vector(datatocluster)){
+        mbig<-length(datatocluster)
+    }
+
     scoresagainstclusters<-matrix(0,mbig,kclust)
 
     diffystart<-10
@@ -137,15 +147,34 @@ VAFclusterEMcore <- function(kclust, coverage, datatocluster){
         for(kk in 1:kclust){
             weightvec<-relativeweights[,kk]
 
-            if(sum(weightvec)>0){
-              clustermean <- sum(datatocluster*weightvec)/sum(weightvec) # the weighted mean
-            } else {
-                clustermean <- 0.95 # arbitrary number a long way from the range of 0 to 0.5 which still has a defined sd
-            }
-            clustersd <- sdfromcoverage(clustermean,coverage) # sd from the coverage through the binomial approximation
+            if(multiFlag){
+              scoresagainstclusters[,kk] <- rep(0,mbig)
+              for(jj in 1:nrow(datatocluster)){ #loop over all bulk samples
 
-            # log likelihoods of the observations
-            scoresagainstclusters[,kk]<- -(datatocluster-clustermean)^2/(2*clustersd^2) - log(2*pi*clustersd^2)
+                if(sum(weightvec)>0){
+                    clustermean <- sum(datatocluster[jj,]*weightvec)/sum(weightvec) # the weighted mean
+                } else {
+                    clustermean <- 0.95 # arbitrary number a long way from the range of 0 to 0.5 which still has a defined sd
+                }
+                clustersd <- sdfromcoverage(clustermean,coverage) # sd from the coverage through the binomial approximation
+
+                scoresagainstclustersVec <- scoresagainstclusters[,kk]
+                # log likelihoods of the observations
+                scoresagainstclusters[,kk] <- as.numeric(scoresagainstclustersVec - (datatocluster[jj,]-clustermean)^2/(2*clustersd^2) - log(2*pi*clustersd^2))
+              }
+
+            } else {
+
+              if(sum(weightvec)>0){
+                clustermean <- sum(datatocluster*weightvec)/sum(weightvec) # the weighted mean
+              } else {
+                clustermean <- 0.95 # arbitrary number a long way from the range of 0 to 0.5 which still has a defined sd
+              }
+              clustersd <- sdfromcoverage(clustermean,coverage) # sd from the coverage through the binomial approximation
+
+              # log likelihoods of the observations
+              scoresagainstclusters[,kk]<- as.numeric(-(datatocluster-clustermean)^2/(2*clustersd^2) - log(2*pi*clustersd^2))
+            }
         }
 
         # now we can update the weights

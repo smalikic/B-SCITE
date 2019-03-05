@@ -14,9 +14,9 @@ if(length(args)>3){
 
 minK <- 1
 if(length(args)>2){
-  maxK <- min(as.numeric(args[3]),length(datas)) # go up to number of clusters specified as third argument
+  maxK <- min(as.numeric(args[3]),ncol(datas)) # go up to number of clusters specified as third argument
 } else {
-  maxK <- length(datas) # otherwise try all possibilities!
+  maxK <- ncol(datas) # otherwise try all possibilities!
 }
 
 AICsearch<-bestAICsearch(dataVec = datas, minK = minK, maxK = maxK, coverage = coverage, startseed = 100, nIterations = 40, breakOnIncrease=TRUE, verbose=TRUE) # but exit the loop when the AIC increases
